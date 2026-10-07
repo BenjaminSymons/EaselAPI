@@ -47,7 +47,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from easel.look import render_look
-from easel.regions import Region
+from easel.regions import as_region
 from easel.stroke import draw_graphite
 
 __all__ = ["Frame", "frames", "write_film", "write_viewer", "ffmpeg_path"]
@@ -207,9 +207,13 @@ def frames(session, every: int = 1, scale: int | None = 720, stroke_motion: bool
             return
         grid = args.get("grid", True)
         region = args.get("region")
+        # A captured region is a cell's name or four bounds; either is a place.
+        crop = None
+        if region:
+            crop = as_region(region if isinstance(region, str) else tuple(region))
         img = render_look(fresh.canvas, scale=max(size), grid=grid if grid else True,
                           values=bool(args.get("values", values)),
-                          region=Region(*region) if region else None,
+                          region=crop,
                           sketch=bool(args.get("sketch", True)),
                           marks=fresh.marks if args.get("marks", True) else None,
                           guides=fresh.guides)

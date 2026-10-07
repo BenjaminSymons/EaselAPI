@@ -70,17 +70,19 @@ def main(argv: list[str]) -> int:
     if plan.values:
         print("the plan's places, as the check reads them (median value; criterion: within "
               "0.10 of what was planned):")
-        for place, value in plan.values.items():
-            mask = s._place_mask(place)
+        for planned in plan.values:
+            mask = s._place_mask(planned.outline)
             read = float(np.median(view[mask])) if mask.any() else float("nan")
             untouched = float((s.canvas.graphite[mask] <= 1e-6).mean()) if mask.any() else 0.0
+            value = planned.value if planned.value is not None else float("nan")
             flag = "" if abs(read - value) <= 0.10 else "  <-- off"
-            print(f"  {str(place):28s} planned {value:.2f}  reads {read:.2f}  "
+            print(f"  {planned.name:28s} planned {value:.2f}  reads {read:.2f}  "
                   f"paper untouched {untouched:.0%}{flag}")
         if plan.lightest is not None:
-            mask = s._place_mask(plan.lightest)
-            print(f"  lightest planned at {plan.lightest}: reads {float(np.median(view[mask])):.2f}, "
-                  f"paper untouched {float((s.canvas.graphite[mask] <= 1e-6).mean()):.0%}")
+            mask = s._place_mask(plan.lightest.outline)
+            print(f"  lightest planned at {plan.lightest.name}: reads "
+                  f"{float(np.median(view[mask])):.2f}, paper untouched "
+                  f"{float((s.canvas.graphite[mask] <= 1e-6).mean()):.0%}")
     else:
         print("no plan declared")
 

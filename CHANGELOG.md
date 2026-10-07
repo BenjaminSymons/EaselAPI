@@ -96,6 +96,15 @@ stream, and nothing new takes an index.
 - `Session.replay()` builds its fresh session through `_fresh_session`, which the film
   shares. Nothing about a rebuild moved.
 
+**Step 6, run 1: the shakedown drawing.** `drawings/egg_in_bowl/`: a hen's egg in a
+shallow bowl, drawn by a fresh session from `REFERENCE.md`, `PAINTER.md` and
+`CALIBRATION.md` alone -- there is no drawing guide yet -- in 154 of 400 marks, with its
+passes, its session file, its film and its notes, re-measured. Two of the spec's criteria
+failed (a look inside every fifteen marks, the darkest value) and two of the agent's
+reasoned causes did not survive measurement; what the run asks of `DRAFTSMAN.md` and of
+the engine is listed at the end of its `NOTES.md`. One fix came out of it: the film fell
+over on a look captured with a cell's name as its region.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with

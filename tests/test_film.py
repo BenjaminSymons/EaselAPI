@@ -36,6 +36,9 @@ def drawn(tmp_path, **kw) -> Session:
     s.rehearse({"hatch": cell("E5"), "grade": "2B"}, region=cell("E5"))
     s.tone(cell("E5"), 0.5)
     s.look(values=True, region=cell("E5"))
+    # A region by its name, as `easel look --region D4` hands one over: the first
+    # drawing's film fell over on exactly this capture.
+    s.look(region="D4", grid="fine")
     return s
 
 
@@ -49,6 +52,7 @@ def test_a_capturing_session_keeps_its_looks_and_rehearsals_beside_the_log(tmp_p
     assert kinds[0] == ("look", 1 + n_hatch)
     assert kinds[1][0] == "rehearse" and kinds[1][1] == kinds[0][1] + 1
     assert kinds[2][0] == "look" and kinds[2][1] == len(s.history.records)
+    assert kinds[3] == ("look", len(s.history.records)) and s.captures[3]["args"]["region"] == "D4"
     assert s.captures[0]["file"].startswith("look_") and s.captures[0]["args"]["grid"] is True
     assert s.captures[2]["args"]["values"] is True and len(s.captures[2]["args"]["region"]) == 4
     # And the log is what it was: no record of any kind for a look.
@@ -112,7 +116,7 @@ def test_the_film_is_a_frame_per_mark_with_the_looks_held(tmp_path):
     n = len(s.history.records)
     assert kinds[0] == "start" and kinds[-1] == "end"
     assert kinds.count("mark") == n
-    assert kinds.count("look") == 2 and kinds.count("rehearse") == 1
+    assert kinds.count("look") == 3 and kinds.count("rehearse") == 1
     looks = [f for f in seq if f.kind == "look"]
     assert all(f.hold == 6 for f in looks)
     # Held where it was taken: the look comes after the records it saw, before the next.
@@ -216,7 +220,7 @@ def test_the_viewer_is_a_page_a_json_and_the_frames(tmp_path):
     assert data["fps"] == 12.0 and data["medium"] == "graphite"
     assert len(data["records"]) == len(s.history.records)
     assert len(data["passes"]) == 1 and data["passes"][0]["lines"][str(before)] == ["p03.py", 1]
-    assert len(data["captures"]) == 3
+    assert len(data["captures"]) == 4
     for entry in data["frames"]:
         assert (page.parent / entry["file"]).exists()
     assert len(data["frames"]) == len(list(frames(s, scale=120, hold_looks=0.5,
