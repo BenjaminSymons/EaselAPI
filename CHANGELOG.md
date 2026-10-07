@@ -78,6 +78,8 @@ call with its place and value kept for the thumbnail, as a mass is.
 **Step 4: capture and the film.** Beside the log, never in it: the log indexes the
 stream, and nothing new takes an index.
 
+- `easel new --medium graphite`, so a drawing can be started from the shell; its
+  `--texture` left off follows the medium.
 - `Session(capture=True)` (`easel new --capture`) keeps each `look()` and `rehearse()`
   with the log index it was taken at (`s.captures`), and each pass `easel run` or the
   server runs with its scripts' text and the line each mark was laid from

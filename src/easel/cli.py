@@ -34,7 +34,7 @@ from easel.notices import NOTICES, EaselWarning
 from easel.palette import PIGMENTS
 from easel.prepare import LEVELS
 from easel.regions import REGION_NAMES
-from easel.session import _MAX_PANELS, Session, _panel_label, _panel_scale
+from easel.session import _MAX_PANELS, MEDIA, Session, _panel_label, _panel_scale
 from easel.texture import TEXTURES
 
 __all__ = ["main", "build_parser", "parse_size", "reference_text", "run_script",
@@ -121,7 +121,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_new = sub.add_parser("new", help="create a new session file")
     p_new.add_argument("session", type=Path)
     p_new.add_argument("--size", type=_parse_size, default="1024x768", help="WIDTHxHEIGHT")
-    p_new.add_argument("--texture", choices=TEXTURES, default="linen")
+    p_new.add_argument("--texture", choices=TEXTURES, default=None,
+                       help="the surface; left off, linen for paint and cartridge for graphite")
+    p_new.add_argument("--medium", choices=MEDIA, default="paint",
+                       help="what the picture is made of: paint, or graphite -- a drawing, "
+                            "made with s.line() and the helpers, looked at in values")
     p_new.add_argument("--ground", default="white", help=f"one of: {', '.join(sorted(GROUNDS))}")
     p_new.add_argument("--seed", type=int, default=0)
     p_new.add_argument("--out-dir", type=Path, default=Path("out"))
@@ -573,11 +577,13 @@ def _dispatch(args) -> int:
                        else (True if args.frame_px is None else args.frame_px)),
             out_dir=args.out_dir,
             budget=args.budget,
+            medium=args.medium,
             capture=args.capture,
         )
         s.save(args.session)
-        print(f"Created {args.session} ({w}x{h}, {args.texture}, ground {args.ground}, "
-              f"seed {args.seed}{', capturing' if args.capture else ''})")
+        print(f"Created {args.session} ({w}x{h}, {s.canvas.texture_name}, ground "
+              f"{args.ground}, seed {args.seed}, {args.medium}"
+              f"{', capturing' if args.capture else ''})")
         if not args.no_prelude:
             written = _write_prelude(args.session)
             if written is not None:

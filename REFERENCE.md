@@ -800,7 +800,7 @@ a paint stroke arrives whole. Nothing here is a record: the log indexes the stre
 a look that took an index would repaint every painting made before it.
 
 ```bash
-easel new p.easel --size 1024x768 --texture linen --ground toned_grey --seed 7 --budget 300 [--frame-px 720] [--no-prelude] [--capture]
+easel new p.easel --size 1024x768 --texture linen --ground toned_grey --seed 7 --budget 300 [--frame-px 720] [--no-prelude] [--medium graphite] [--capture]
 easel run p.easel pass.py [p3.py p4.py ...] [--rehearse] [--count] [--alternatives] [--thumbnail] [--prelude other.py] [--no-prelude] [--check]
 easel look p.easel [--grid] [--fine] [--values] [--region D4] [--reference ref.jpg] [--diff]
                    [--no-sketch] [--no-marks] [--scale 512]

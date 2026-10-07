@@ -15,6 +15,9 @@ venv/
 
 # Easel session state and output
 *.easel
+# A drawing keeps its session file: the captured looks and passes the film plays
+# live in it, and the scripts rebuild the log but not those.
+!drawings/**/*.easel
 out/
 output/
 samples/*.png
