@@ -40,7 +40,7 @@ from easel.color import (
     parse_color,
     srgb_to_linear,
 )
-from easel.graphite import get_grade, tip_brush
+from easel.graphite import GRADES, get_grade, tip_brush
 from easel.history import DEFAULT_FRAME_PX, History, StrokeRecord
 from easel.look import (
     DEFAULT_LOOK_SIZE,
@@ -2317,6 +2317,453 @@ class Session:
         self._auto_frame()
         return record
 
+    def hatch(
+        self,
+        place,
+        angle=None,
+        spacing: float | None = None,
+        grade: str = "HB",
+        pressure="taper",
+        tip: str = "point",
+        width: float | None = None,
+        overhang: float = 0.0,
+        note: str = "",
+    ) -> list[StrokeRecord]:
+        """Fill a place with parallel lines: the graphite medium's block-in.
+
+        Every pass is a :meth:`line`, so the log holds one kind of mark and the film
+        sees each line travel. The passes alternate direction the way a hand comes
+        back across the paper, and a tapered profile is reversed on the flipped ones
+        so the pressure reads the same way across the place on every pass. A
+        :class:`~easel.regions.Polygon` cuts every pass against its own outline.
+
+        Args:
+            place: a name, a :class:`~easel.regions.Region`, a 4-tuple, or a shape.
+            angle: the direction the lines run, as :meth:`block_in` takes one --
+                degrees in the ``0..1`` space, a line of two points, a name, or a
+                sequence for one pass of lines per entry, which is what
+                :meth:`crosshatch` is. Left off, the place's own long axis.
+            spacing: how far apart the lines sit, as a fraction of the canvas long
+                side. Left off, two and a half line widths for the point -- lines you
+                can see between -- and half a width for the side, so its passes
+                overlap into tone.
+            grade, pressure, tip, width: as :meth:`line`, for every pass.
+            overhang: how far each line runs past the ends of its pass, in line
+                widths. ``0``: a hatch stops where the place does.
+            note: recorded on every pass.
+
+        Returns:
+            The records of every line laid.
+        """
+        place = as_place(place)
+        shaped = isinstance(place, Polygon)
+        g = get_grade(grade)
+        b = tip_brush(g, tip, width)
+        band = _hatch_spacing(b, tip, spacing)
+        over = float(overhang) * b.size
+        name = place.name or ("shape" if shaped else "region")
+        records: list[StrokeRecord] = []
+        with self._one_call("hatch", place,
+                            mass=_mass_params(place, self._hatch_value(g, pressure, tip,
+                                                                       b.size, band))):
+            for pass_dir in _pass_directions("axis" if angle is None else angle):
+                deg = place.axis if pass_dir == "axis" else pass_dir
+                paths = (self._shape_paths(place, deg, band, over) if shaped
+                         else self._block_paths(place, deg, band, over))
+                for path, flipped in paths:
+                    records.append(self.line(
+                        path, grade=g.name,
+                        pressure=_canvas_order_pressure(pressure) if flipped else pressure,
+                        tip=tip, width=b.size,
+                        note=note or f"hatch {name} {_direction_said(pass_dir)}",
+                    ))
+        return records
+
+    def crosshatch(self, place, angles=(30, 120), **kw) -> list[StrokeRecord]:
+        """Two or more hatches over one place, one per angle: :meth:`hatch` with a
+        sequence. ``angles`` are in the ``0..1`` space, as every direction here is."""
+        return self.hatch(place, angle=list(angles), **kw)
+
+    def contour(
+        self,
+        place,
+        grade: str = "HB",
+        pressure="taper",
+        tip: str = "point",
+        width: float | None = None,
+        closed: bool = True,
+        note: str = "",
+    ) -> StrokeRecord:
+        """One line around a shape's outline, or along a run of points, corners kept.
+
+        The pressure profile runs along the whole outline, so a ``taper`` lands light,
+        presses through the far side and lifts off where it began -- a lost-and-found
+        edge in one mark. A shape is drawn through its own points, not through a
+        spline, so a box stays a box; a run of points is drawn as given and, with
+        ``closed``, brought back round to its start.
+
+        Args:
+            place: a shape, a region, a name, or a run of points.
+            grade, pressure, tip, width: as :meth:`line`.
+            closed: bring a run of points back round to its start. A shape is always
+                closed; ``False`` on one leaves its last side open.
+            note: recorded in the log.
+        """
+        outline = _outline_of(place, "contour")
+        if outline is not None:
+            pts = outline if closed else outline[:-1]
+            name = getattr(place, "name", "") or "shape"
+        else:
+            pts = [(float(x), float(y)) for x, y in place]
+            if closed and len(pts) >= 3:
+                pts = [*pts, pts[0]]
+            name = "edge"
+        return self.line(pts, grade=grade, pressure=pressure, tip=tip, width=width,
+                         smooth=False, note=note or f"contour {name}")
+
+    def scribble(
+        self,
+        place,
+        density: float = 1.0,
+        grade: str = "2B",
+        pressure=0.5,
+        tip: str = "point",
+        width: float | None = None,
+        note: str = "",
+    ) -> list[StrokeRecord]:
+        """Loose overlapping zigzags that fill a place fast: the mass before the tone.
+
+        Each stroke is one :meth:`line` that zigzags across the place at its own
+        angle, the angles fanned round the place so the strokes cross; the spline
+        through the zigzag's corners is what makes it loose. ``density`` sets how
+        many: ``1.0`` is four strokes, which reads as a scribbled mass on a cell-sized
+        place; more for a bigger one. The wander is drawn from the stream, so a
+        rehearsal lands as it was rehearsed.
+
+        Args:
+            place: a shape, a region, a name or a 4-tuple.
+            density: how many strokes, as a multiple of four.
+            grade, pressure, tip, width: as :meth:`line`.
+            note: recorded on every stroke.
+        """
+        place = as_place(place)
+        poly = place if isinstance(place, Polygon) else polygon(place)
+        g = get_grade(grade)
+        b = tip_brush(g, tip, width)
+        n = _scribble_count(density)
+        name = place.name or ("shape" if isinstance(place, Polygon) else "region")
+        records: list[StrokeRecord] = []
+        with self._one_call("scribble", place,
+                            mass=_mass_params(place, self._hatch_value(g, pressure, tip,
+                                                                       b.size, b.size * 3.0))):
+            rng = self.rng
+            base = float(rng.uniform(0.0, 180.0))
+            for i in range(n):
+                deg = base + i * 137.5 + float(rng.normal(0.0, 6.0))
+                path = _scribble_path(poly, deg, b.size, rng)
+                if len(path) < 2:
+                    continue
+                records.append(self.line(path, grade=g.name, pressure=pressure, tip=tip,
+                                         width=b.size, note=note or f"scribble {name}"))
+        return records
+
+    def tone(
+        self,
+        place,
+        value: float,
+        grade: str = "2B",
+        pressure=0.6,
+        tip: str = "side",
+        angle=None,
+        note: str = "",
+    ) -> list[StrokeRecord]:
+        """Side-of-pencil passes over a place until it reads ``value``.
+
+        The one verb here that measures as it goes. Passes of overlapping lines are
+        laid across the place -- along its axis, then across, then on the two
+        diagonals -- on a copy of the canvas, each pass read off the values view as
+        ``compare()`` reads a place (the median), until the place is at or past the
+        value; the pass that overshoots is laid lighter, bisected on its pressure, so
+        the place lands within a few hundredths. Then the same passes are laid for
+        real, from the same stream, so what was measured is what lands. Priced as
+        it is laid: one stroke per line, however many passes it takes.
+
+        Args:
+            place: a shape, a region, a name or a 4-tuple.
+            value: the value to reach, ``0`` black to ``1`` white -- the engine's
+                convention, which ``compare()`` and ``look(values=True)`` read.
+            grade: the pencil. Its ceiling bounds what can be reached: a ``2B`` lays
+                down to about ``0.21`` on white paper, a ``6B`` to ``0.04``.
+            pressure: the pressure of a full pass. The last pass may be laid lighter.
+            tip: ``"side"``, the lead laid over, which is how a tone is laid; the
+                ``"point"`` works too and costs more lines.
+            angle: the first pass's direction, as :meth:`hatch` takes one; the rest
+                step round from it. Left off, the place's own axis.
+            note: recorded on every line.
+
+        Raises:
+            ValueError: when the place already reads at or under ``value``, or when the
+                grade cannot reach it -- naming what it reads and what the grade can do.
+        """
+        place = as_place(place)
+        target = float(value)
+        g = get_grade(grade)
+        b = tip_brush(g, tip, None)
+        mask = self._place_mask(place)
+        if not mask.any():
+            raise ValueError(f"tone(): {place} covers no pixel of the canvas.")
+        now = self._median_value(self.canvas, mask)
+        if target >= now - _TONE_TOL:
+            raise ValueError(
+                f"tone(value={target:.3f}) asks for nothing: the place reads {now:.3f} "
+                f"already, and a pencil only darkens. Ask for a lower value, or lift "
+                f"with kneaded() or plastic()."
+            )
+        floor = self._colour_value(self.canvas.ground_color) * (1.0 - g.ceiling)
+        if target < floor - _TONE_TOL:
+            raise ValueError(
+                f"tone(value={target:.3f}) is out of a {g.name}'s reach: its ceiling "
+                f"leaves the paper at {floor:.3f} however many passes are laid. Take a "
+                f"softer grade -- the box reaches "
+                f"{self._colour_value(self.canvas.ground_color) * (1.0 - GRADES['6B'].ceiling):.3f} "
+                f"with a 6B."
+            )
+        base = place.axis if angle is None else _angle_of(angle)
+        plan = self._tone_plan(place, mask, target, g, pressure, tip, b, base)
+        name = place.name or ("shape" if isinstance(place, Polygon) else "region")
+        records: list[StrokeRecord] = []
+        with self._one_call("tone", place, mass=_mass_params(place, target)):
+            for k, press in plan:
+                records.extend(self._tone_pass(place, base + _TONE_TURNS[k % len(_TONE_TURNS)],
+                                               g, tip, b, press, note or f"tone {name}"))
+        return records
+
+    def _tone_plan(self, place, mask, target: float, g, pressure, tip: str, b: Brush,
+                   base: float) -> list[tuple[int, object]]:
+        """The passes :meth:`tone` lays, found on a trial copy: ``[(turn, pressure)]``.
+
+        Passes at the full pressure until the place is at or past the target; the
+        pass that takes it past is laid again lighter, bisected on a scalar pressure,
+        from the plane and the stream as they stood before it. The trial's stream is
+        a copy of the painting's and every line is seeded by its index, so what the
+        real passes lay is what this measured.
+        """
+        trial = self._trial_session()
+        trial._solving = True
+        plan: list[tuple[int, object]] = []
+        for k in range(_TONE_MAX_PASSES):
+            kept_plane = trial.canvas.graphite.copy()
+            kept_state = trial.rng.bit_generator.state
+            kept_records = len(trial.history.records)
+            before = self._median_value(trial.canvas, mask)
+            trial._tone_pass(place, base + _TONE_TURNS[k % len(_TONE_TURNS)], g, tip, b,
+                             pressure, "")
+            after = self._median_value(trial.canvas, mask)
+            if after > target + _TONE_TOL:
+                plan.append((k, pressure))
+                if after >= before - 1e-4:
+                    break               # this grade has nothing more to give here
+                continue
+            if after >= target - _TONE_TOL:
+                plan.append((k, pressure))
+                break
+            # Overshot: lay this pass lighter. Bisect on a scalar pressure between a
+            # touch and the full pass, restoring the plane and the stream each time.
+            peak = float(pressure_curve(pressure, 32).max())
+            lo, hi = 0.05, peak
+            best, best_v = peak, after
+            for _ in range(_TONE_SOLVE_STEPS):
+                mid = 0.5 * (lo + hi)
+                trial.canvas.graphite[:] = kept_plane
+                trial.rng.bit_generator.state = kept_state
+                del trial.history.records[kept_records:]
+                trial._tone_pass(place, base + _TONE_TURNS[k % len(_TONE_TURNS)], g, tip, b,
+                                 mid, "")
+                v = self._median_value(trial.canvas, mask)
+                if abs(v - target) < abs(best_v - target):
+                    best, best_v = mid, v
+                if abs(v - target) <= _TONE_TOL:
+                    break
+                if v > target:
+                    lo = mid
+                else:
+                    hi = mid
+            if abs(before - target) < abs(best_v - target):
+                break                   # closer without the pass than with it
+            plan.append((k, best))
+            break
+        return plan
+
+    def _tone_pass(self, place, degrees: float, g, tip: str, b: Brush, pressure,
+                   note: str) -> list[StrokeRecord]:
+        """One pass of :meth:`tone`: overlapping lines across the place at ``degrees``."""
+        shaped = isinstance(place, Polygon)
+        band = _hatch_spacing(b, tip, None)
+        paths = (self._shape_paths(place, degrees, band, 0.0) if shaped
+                 else self._block_paths(place, float(degrees), band, 0.0))
+        out: list[StrokeRecord] = []
+        for path, flipped in paths:
+            out.append(self.line(path, grade=g.name,
+                                 pressure=_canvas_order_pressure(pressure) if flipped
+                                 else pressure,
+                                 tip=tip, width=b.size, note=note))
+        return out
+
+    def _place_mask(self, place) -> np.ndarray:
+        """A place as a boolean mask of the canvas: a shape's own, a rectangle's slice."""
+        mask = self.canvas._mask_of(place)
+        if mask is None:
+            mask = np.zeros((self.canvas.height, self.canvas.width), dtype=bool)
+            x0, y0, x1, y1 = self.canvas.region_px(place)
+            mask[y0:y1, x0:x1] = True
+        return mask
+
+    @staticmethod
+    def _median_value(canvas: Canvas, mask: np.ndarray) -> float:
+        """What a place reads: the median of the values view over its pixels."""
+        return float(np.median(_values_of(canvas.to_srgb8(impasto=False))[mask]))
+
+    def _hatch_value(self, g, pressure, tip: str, width: float, band: float) -> float:
+        """What a hatch or a scribble will roughly read, for the thumbnail's notan.
+
+        An estimate, not a measurement: the grade's take at the profile's peak, over
+        the share of the place the lines cover. The thumbnail draws arrangements, and
+        a mass's value there is the value it was *meant* at; a hatch means this.
+        """
+        peak = float(pressure_curve(pressure, 32).max())
+        dark = g.ceiling * (1.0 - math.exp(-g.rate_for(tip) * g.strength(peak)))
+        fill = min(1.0, width / max(band, 1e-6))
+        return self._colour_value(self.canvas.ground_color) * (1.0 - dark * fill)
+
+    def stump(
+        self,
+        place,
+        strength: float = 0.5,
+        direction=None,
+        width: float = 0.03,
+        note: str = "",
+    ) -> StrokeRecord:
+        """Blend the graphite: a stump dragged along a path, or worked over a place.
+
+        Redistributes rather than removes -- the graphite moves from where there is
+        more to where there is less, over a millimetre or two, and a twentieth of
+        what moved stays on the stump
+        (:meth:`Canvas.stump_graphite <easel.canvas.Canvas.stump_graphite>`). Along
+        a path the blend is biased along the drag; over a shape it is worked every
+        way unless ``direction`` says otherwise. Blending fills the tooth as it goes,
+        so a light stroke laid over a stumped passage lays flatter than on fresh
+        paper. One mark in the log and against the budget.
+
+        Args:
+            place: a run of points to drag along, or a shape, a region or a name to
+                work over.
+            strength: how far each pixel moves toward the blended value, ``0..1``.
+            direction: degrees, screen angle, to bias the blend along; left off, a
+                path's own direction, or every way over a shape.
+            width: a path's footprint, as a fraction of the canvas long side.
+            note: recorded in the log.
+        """
+        s = float(np.clip(strength, 0.0, 1.0))
+        outline = _outline_of(place, "stump")
+        canvas = self.canvas
+        if outline is None:
+            pts = np.atleast_2d(np.asarray(place, dtype=np.float32))
+            if pts.ndim != 2 or pts.shape[1] != 2 or not np.isfinite(pts).all():
+                raise ValueError(f"stump() takes a path of (x, y) points or a place, got "
+                                 f"{place!r}")
+            carrier = Brush(name="stump", tip="round_soft", size=float(width), hardness=0.3,
+                            spacing=0.15, jitter=0.0, size_jitter=0.0, angle_follow=False)
+            box = _stroke_box(canvas, pts, carrier, True)
+            cover, origin = _path_cover(canvas, pts, carrier, box)
+            if direction is None:
+                dx = (float(pts[-1, 0]) - float(pts[0, 0])) * (canvas.width - 1)
+                dy = (float(pts[-1, 1]) - float(pts[0, 1])) * (canvas.height - 1)
+                direction = math.degrees(math.atan2(dy, dx)) if math.hypot(dx, dy) > 1e-6 else None
+            held = None
+            points = [[float(x), float(y)] for x, y in pts]
+        else:
+            held = as_place(place)
+            cover, origin = _place_cover(canvas, held, soften=0)
+            box = (origin[0], origin[1], origin[0] + cover.shape[1], origin[1] + cover.shape[0])
+            points = []
+        self._snapshot(box, graphite_only=True)
+        try:
+            index = self._index_base + len(self.history.records)
+            moved = 0.0 if self._counting else canvas.stump_graphite(
+                cover, origin, s, None if direction is None else float(direction))
+            record = self.history.add(StrokeRecord(
+                index=index, kind="stump", brush="stump", points=points,
+                pressure=s, dabs=int(np.count_nonzero(cover > 0.01)), paint=moved,
+                note=note or ("stump " + (held.name if held is not None and held.name
+                                           else ("shape" if held is not None else "along"))),
+                params={"strength": s,
+                        "direction": None if direction is None else float(direction),
+                        "width": float(width),
+                        **(_place_params(held) if held is not None else {}),
+                        "rng": self._stream_state(),
+                        **({"via": self._call_verb} if self._call_verb else {})},
+            ))
+        except Exception:
+            self.history.discard_snapshot()
+            raise
+        site = self._call_site if self._stream_mark is not None else _painter_site()
+        if site is not None:
+            self._sites[record.index] = site
+        self._auto_frame()
+        return record
+
+    def kneaded(self, place, strength: float = 0.5, note: str = "") -> StrokeRecord:
+        """Lift graphite over a place with a kneaded eraser: softly, by a share, with a ghost.
+
+        A repair with side-effects, not an undo. Lifts ``strength`` of the liftable
+        graphite -- ``0.3`` to ``0.7`` is a pass of a kneaded eraser -- over the place
+        with a soft edge, and leaves the ghost an eraser leaves: a share of what was
+        there that grows with its darkness
+        (:meth:`Canvas.lift_graphite <easel.canvas.Canvas.lift_graphite>`). A ghosted
+        line is fine under a dark mass and ruins a highlight, so erase early and plan
+        the highlights as paper never touched. One mark, charged.
+        """
+        return self._lift(place, "kneaded", float(np.clip(strength, 0.0, 1.0)), note)
+
+    def plastic(self, place, note: str = "") -> StrokeRecord:
+        """Lift graphite over a place with a plastic eraser: hard, with a clean edge.
+
+        For pulling a highlight out of a worked passage. Takes most of what is there
+        in one pass, cut on the place's own edge, and leaves the same ghost
+        :meth:`kneaded` does -- a highlight lifted is never paper never touched. One
+        mark, charged.
+        """
+        return self._lift(place, "plastic", _PLASTIC_LIFT, note)
+
+    def _lift(self, place, eraser: str, lift: float, note: str) -> StrokeRecord:
+        """What the two erasers share: a place, a share lifted, and a ``lift`` record."""
+        held = as_place(place)
+        canvas = self.canvas
+        cover, origin = _place_cover(canvas, held,
+                                     soften=max(2, int(round(canvas.long_side * _KNEADED_EDGE)))
+                                     if eraser == "kneaded" else 0)
+        box = (origin[0], origin[1], origin[0] + cover.shape[1], origin[1] + cover.shape[0])
+        self._snapshot(box, graphite_only=True)
+        try:
+            index = self._index_base + len(self.history.records)
+            lifted = 0.0 if self._counting else canvas.lift_graphite(cover, origin, lift)
+            record = self.history.add(StrokeRecord(
+                index=index, kind="lift", brush=eraser, points=[], pressure=float(lift),
+                dabs=int(np.count_nonzero(cover > 0.01)), paint=lifted,
+                note=note or f"{eraser} {held.name or ('shape' if isinstance(held, Polygon) else 'region')}",
+                params={"eraser": eraser, "strength": float(lift), **_place_params(held),
+                        "rng": self._stream_state(),
+                        **({"via": self._call_verb} if self._call_verb else {})},
+            ))
+        except Exception:
+            self.history.discard_snapshot()
+            raise
+        site = self._call_site if self._stream_mark is not None else _painter_site()
+        if site is not None:
+            self._sites[record.index] = site
+        self._auto_frame()
+        return record
+
     # -- landmarks --------------------------------------------------------------
     def mark(self, name: str, x: float, y: float) -> tuple[float, float]:
         """Record a named point, and show it on every look from now on.
@@ -3225,6 +3672,14 @@ class Session:
             return self.scumble(spec["place"], **kwargs)
         if kind == "cover":
             return self.cover(spec["place"], **kwargs)
+        if kind == "hatch":
+            return self.hatch(spec["place"], **kwargs)
+        if kind == "scribble":
+            return self.scribble(spec["place"], **kwargs)
+        if kind == "contour":
+            return [self.contour(spec["place"], **kwargs)]
+        if kind == "line":
+            return [self.line(**kwargs)]
         return [self.stroke(**kwargs)]
 
     def paint(self, plan, note: str = "") -> list[StrokeRecord]:
@@ -3400,13 +3855,38 @@ class Session:
         so what it describes is the passes that were actually counted. A mark has
         none: one stroke is one stroke, and saying so on every entry would be noise.
         """
-        if kind == "stroke":
+        if kind in ("stroke", "line", "contour"):
             return 1, ""
         if kind == "cover":
             # A burial is a block-in with the recipe already set, so it is priced as
             # the block-in it lays -- through the same arithmetic, not beside it.
             # The dry is free and is not a mark.
             return self._plan_price("mass", _cover_as_mass(spec))
+        if kind == "scribble":
+            n = _scribble_count(float(spec.get("density", 1.0)))
+            return n, f"{n} zigzag strokes across {spec['place'].name or 'the place'}"
+        if kind == "hatch":
+            # The same walk the verb makes, on a trial whose stream is a copy.
+            trial = self._trial_session()
+            place = spec["place"]
+            g = get_grade(spec.get("grade", "HB"))
+            tip = str(spec.get("tip", "point"))
+            b = tip_brush(g, tip, spec.get("width"))
+            band = _hatch_spacing(b, tip, spec.get("spacing"))
+            over = float(spec.get("overhang", 0.0)) * b.size
+            shaped = isinstance(place, Polygon)
+            laid = 0
+            angle = spec.get("angle")
+            dirs = _pass_directions("axis" if angle is None else angle)
+            for pass_dir in dirs:
+                deg = place.axis if pass_dir == "axis" else pass_dir
+                paths = (trial._shape_paths(place, deg, band, over) if shaped
+                         else trial._block_paths(place, deg, band, over))
+                laid += sum(1 for _ in paths)
+            why = f"{laid} lines {band:.3f} apart"
+            if len(dirs) > 1:
+                why += f" over {len(dirs)} directions"
+            return laid, why
         trial = self._trial_session()
         b = trial._resolve_brush(spec.get("brush", "bristle"), spec.get("size"),
                                  spec.get("opacity"), {})
@@ -3660,10 +4140,27 @@ class Session:
                 out.append(("mass", {"place": as_place(entry)}))
                 continue
             if not isinstance(entry, dict) or "points" in entry:
-                out.append(("stroke", self._stroke_specs([entry])[0]))
+                # A path, or a dict of stroke arguments -- or of line arguments: a
+                # graphite mark names its grade, and a bare path in a drawing is a
+                # line of the default grade, as it is a stroke in a painting.
+                graphite = (("grade" in entry) if isinstance(entry, dict)
+                            else self.medium == "graphite")
+                if graphite:
+                    spec = dict(entry) if isinstance(entry, dict) else {"points": entry}
+                    _check_plan_keys("line", spec)
+                    spec["points"] = self._stroke_specs([{"points": spec["points"]}])[0]["points"]
+                    out.append(("line", spec))
+                else:
+                    out.append(("stroke", self._stroke_specs([entry])[0]))
                 continue
             spec = dict(entry)
-            if "cover" in spec:
+            if "hatch" in spec:
+                kind, place = "hatch", spec.pop("hatch")
+            elif "scribble" in spec:
+                kind, place = "scribble", spec.pop("scribble")
+            elif "contour" in spec:
+                kind, place = "contour", spec.pop("contour")
+            elif "cover" in spec:
                 # The verb names itself, because cover's own first argument is the
                 # generic `place` and a plan needs a word that says which call it is.
                 kind, place = "cover", spec.pop("cover")
@@ -3695,12 +4192,35 @@ class Session:
         return out
 
     def _preview_entry(self, kind: str, spec: dict, index: int) -> dict:
-        """What the overlay needs, whichever of the five kinds this entry is."""
+        """What the overlay needs, whichever of the kinds this entry is."""
         if kind in ("mass", "scumble", "cover"):
             return self._preview_mass(spec, index, kind)
         if kind == "sweep":
             return self._preview_sweep(spec, index)
+        if kind in ("line", "hatch", "scribble", "contour"):
+            return self._preview_graphite(kind, spec, index)
         return self._preview_shape(spec, index)
+
+    def _preview_graphite(self, kind: str, spec: dict, index: int) -> dict:
+        """What the overlay needs for a graphite entry: a line's path at its width, or
+        a place's outline -- filled for a hatch or a scribble, drawn for a contour."""
+        g = get_grade(spec.get("grade", "HB"))
+        tip = str(spec.get("tip", "point"))
+        b = tip_brush(g, tip, spec.get("width"))
+        peak = float(pressure_curve(spec.get("pressure", 0.5 if kind == "line" else "taper"),
+                                    32).max())
+        width = b.size * ((g.width_floor + (1.0 - g.width_floor) * peak) if tip == "point"
+                          else 1.0)
+        if kind == "line":
+            return {"points": spec["points"], "width": width,
+                    "label": str(spec.get("label", spec.get("note", "") or index + 1))}
+        place = spec["place"]
+        outline = place if isinstance(place, Polygon) else polygon(place)
+        label = str(spec.get("label", spec.get("note") or place.name or f"{kind} {index + 1}"))
+        if kind == "contour":
+            return {"points": outline.closed, "width": width, "label": label}
+        return {"points": outline.closed, "width": width, "fill": True,
+                "label": self._priced(kind, spec, label)}
 
     def _priced(self, kind: str, spec: dict, label: str) -> str:
         """A mass's label with what it charges, so the price is on the picture.
@@ -5782,6 +6302,22 @@ class Session:
                     smooth=bool(record.params.get("smooth", True)),
                     note=record.note,
                 )
+            elif record.kind == "stump":
+                place = _place_from_params(record.params)
+                made = fresh.stump(
+                    record.points if place is None else place,
+                    strength=float(record.params.get("strength", 0.5)),
+                    direction=record.params.get("direction"),
+                    width=float(record.params.get("width", 0.03)),
+                    note=record.note,
+                )
+            elif record.kind == "lift":
+                made = fresh._lift(
+                    _place_from_params(record.params),
+                    str(record.params.get("eraser", "kneaded")),
+                    float(record.params.get("strength", 0.5)),
+                    record.note,
+                )
             else:
                 params = dict(record.params)
                 color = params.pop("color", record.color_hex or "#000000")
@@ -6051,6 +6587,13 @@ PLAN_ACCEPTS = {
     "sweep": _accepts(Session.sweep),
     "scumble": _accepts(Session.scumble) | {"shape", "region"},
     "cover": _accepts(Session.cover) | {"cover"},
+    # The graphite medium's: a mark by its grade, and the three helpers that fill or
+    # follow a place, each by its own name as `cover` is. `tone` is not here: it
+    # measures the canvas as it lays, so its price is only known once it is laid.
+    "line": _accepts(Session.line),
+    "hatch": _accepts(Session.hatch) | {"hatch"},
+    "scribble": _accepts(Session.scribble) | {"scribble"},
+    "contour": _accepts(Session.contour) | {"contour"},
 }
 
 
@@ -9627,7 +10170,7 @@ def _place_params(place) -> dict:
 #: The calls that fill a place and keep it for the thumbnail: every verb that opens
 #: :meth:`Session._one_call` with a mass. The same four as ``_BURYING_VIAS``, for another
 #: reason -- what a layer is, there; what a thumbnail draws, here.
-_MASS_VIAS = ("block_in", "cover", "scumble", "sweep")
+_MASS_VIAS = ("block_in", "cover", "scumble", "sweep", "hatch", "scribble", "tone")
 
 
 class _Drawn(NamedTuple):
@@ -10272,3 +10815,143 @@ def _warn_older_engine(session, session_path: Path, saved_by: str) -> None:
         f"canvas where {'it is' if one else 'they are'}. {back}",
         stacklevel=3,
     )
+
+
+# --------------------------------------------------------------------------------------
+# The graphite medium's helpers
+# --------------------------------------------------------------------------------------
+#: How close to its value a `tone` has to land, and how many passes and how many
+#: bisection steps it may take getting there. Four hundredths is under the tenth that
+#: separates two planned masses and over the noise a side pass's tooth leaves in a
+#: median.
+_TONE_TOL = 0.02
+_TONE_MAX_PASSES = 8
+_TONE_SOLVE_STEPS = 7
+#: The directions `tone`'s passes step round: along the place's axis, across it, and
+#: the two diagonals, then between, so no two consecutive passes share a direction and
+#: the passes do not read as bars.
+_TONE_TURNS = (0.0, 90.0, 45.0, 135.0, 22.5, 112.5, 67.5, 157.5)
+#: How much a plastic eraser takes of what it can lift in one pass; a kneaded one takes
+#: its `strength`.
+_PLASTIC_LIFT = 0.92
+#: How far a kneaded eraser's edge softens, as a share of the long side: a kneaded
+#: eraser has no edge of its own, a plastic one is cut on the place.
+_KNEADED_EDGE = 6.0 / 1024.0
+
+
+def _hatch_spacing(b: Brush, tip: str, spacing) -> float:
+    """How far apart a hatch's lines sit: as asked, or the tip's own default."""
+    if spacing is not None:
+        return max(float(spacing), 0.001)
+    return max(b.size * (2.5 if tip == "point" else 0.5), 0.0025)
+
+
+def _scribble_count(density: float) -> int:
+    """How many zigzag strokes a scribble is: four at ``density=1``."""
+    return max(1, int(round(4.0 * float(density))))
+
+
+def _direction_said(pass_dir) -> str:
+    """A pass direction as a word for the log: a name, or its degrees."""
+    if isinstance(pass_dir, str):
+        return pass_dir
+    return f"{float(pass_dir):.0f}deg"
+
+
+def _scribble_path(poly: Polygon, degrees: float, width: float,
+                   rng: np.random.Generator) -> list[tuple[float, float]]:
+    """One scribble stroke: a zigzag across ``poly`` advancing along ``degrees``.
+
+    Each corner of the zigzag sits a little inside one side of the shape, the sides
+    alternating, found by cutting the line across the shape at that offset
+    (:func:`_spans_inside`); the spline the line is drawn with rounds the corners
+    into the loops a scribble has.
+    """
+    theta = math.radians(float(degrees))
+    dx, dy = math.cos(theta), math.sin(theta)
+    nx, ny = -dy, dx
+    pts = np.asarray(poly.points, dtype=np.float64)
+    cx, cy = poly.box.center
+    along = (pts[:, 0] - cx) * dx + (pts[:, 1] - cy) * dy
+    lo_d, hi_d = float(along.min()), float(along.max())
+    step = max(3.0 * float(width), (hi_d - lo_d) / 12.0, 0.01)
+    m = max(2, int(round((hi_d - lo_d) / step)))
+    path: list[tuple[float, float]] = []
+    for k in range(m + 1):
+        t = lo_d + (hi_d - lo_d) * (k + float(rng.uniform(-0.2, 0.2))) / m
+        t = min(max(t, lo_d), hi_d)
+        ox, oy = cx + dx * t, cy + dy * t
+        spans = _spans_inside(poly, (ox, oy), (nx, ny))
+        if not spans:
+            continue
+        s0, s1 = max(spans, key=lambda s: s[1] - s[0])
+        inset = (s1 - s0) * float(rng.uniform(0.05, 0.22))
+        v = (s1 - inset) if k % 2 == 0 else (s0 + inset)
+        path.append(_canvas_point(ox + nx * v, oy + ny * v))
+    return path
+
+
+def _place_cover(canvas, place, soften: int = 0) -> tuple[np.ndarray, tuple[int, int]]:
+    """A place's coverage over its own box, ``(cover, (x0, y0))``, softened or not.
+
+    A shape's :meth:`~easel.regions.Polygon.coverage`, a rectangle's ones, cropped to
+    the box the place reaches with a margin for the softening; ``soften`` pixels of a
+    box blur on the cover, for an eraser with no edge of its own.
+    """
+    w, h = canvas.width, canvas.height
+    if isinstance(place, Polygon):
+        full = place.coverage(w, h)
+        bx0, by0, bx1, by1 = place.bounds
+    else:
+        full = np.zeros((h, w), dtype=np.float32)
+        x0, y0, x1, y1 = canvas.region_px(place)
+        full[y0:y1, x0:x1] = 1.0
+        bx0, by0, bx1, by1 = place.bounds
+    m = int(soften) + 2
+    x0 = int(np.clip(math.floor(bx0 * w) - m, 0, w))
+    x1 = int(np.clip(math.ceil(bx1 * w) + m + 1, 0, w))
+    y0 = int(np.clip(math.floor(by0 * h) - m, 0, h))
+    y1 = int(np.clip(math.ceil(by1 * h) + m + 1, 0, h))
+    cover = full[y0:y1, x0:x1].astype(np.float32)
+    if soften > 0 and cover.size:
+        r = int(soften)
+        padded = np.pad(cover, r, mode="constant")
+        acc = np.zeros_like(cover)
+        for oy in range(-r, r + 1):
+            for ox in range(-r, r + 1):
+                if oy * oy + ox * ox <= r * r:
+                    acc += padded[r + oy:r + oy + cover.shape[0], r + ox:r + ox + cover.shape[1]]
+        count = sum(1 for oy in range(-r, r + 1) for ox in range(-r, r + 1)
+                    if oy * oy + ox * ox <= r * r)
+        cover = acc / float(count)
+    return cover, (x0, y0)
+
+
+def _path_cover(canvas, pts: np.ndarray, carrier: Brush,
+                box) -> tuple[np.ndarray, tuple[int, int]]:
+    """A path's soft footprint over its box, as a stump drags it: the carrier's round
+    tip stamped along the path, each stamp a maximum into the cover."""
+    from easel.stroke import _dabs  # the walk a mark makes, before any of it is laid
+    if box is None:
+        box = (0, 0, canvas.width, canvas.height)
+    x0, y0, x1, y1 = box
+    cover = np.zeros((max(y1 - y0, 0), max(x1 - x0, 0)), dtype=np.float32)
+    if not cover.size:
+        return cover, (x0, y0)
+    pos, angles, _dists, diameter = _dabs(canvas, pts, carrier, True)
+    r = diameter * 0.5
+    for i in range(len(pos)):
+        cx, cy = float(pos[i, 0]), float(pos[i, 1])
+        ix, iy = math.floor(cx), math.floor(cy)
+        mask = carrier.mask(r, float(angles[i]), cx - ix, cy - iy)
+        n = mask.shape[0]
+        half = n // 2
+        mx0, my0 = ix - half - x0, iy - half - y0
+        sx0, sy0 = max(0, -mx0), max(0, -my0)
+        cx0, cy0 = max(0, mx0), max(0, my0)
+        cx1, cy1 = min(cover.shape[1], mx0 + n), min(cover.shape[0], my0 + n)
+        if cx1 <= cx0 or cy1 <= cy0:
+            continue
+        window = cover[cy0:cy1, cx0:cx1]
+        np.maximum(window, mask[sy0:sy0 + (cy1 - cy0), sx0:sx0 + (cx1 - cx0)], out=window)
+    return cover, (x0, y0)

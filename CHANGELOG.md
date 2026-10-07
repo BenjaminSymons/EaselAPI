@@ -59,6 +59,22 @@ and the sampler's moved only because it gained a paper.
   `scripts/probe_graphite_scale.py`, its value scale; two golden cases, `graphite` and
   `pencils`.
 
+**Step 3: the helpers.** Every one that lays graphite lays `line` records, inside one
+call with its place and value kept for the thumbnail, as a mass is.
+
+- `hatch(place, angle, spacing, ...)` and `crosshatch(place, angles)` on the pass
+  geometry `block_in` walks; `contour(place)` one line round an outline with its
+  corners; `scribble(place, density)` zigzag strokes fanned round the place; `tone(place,
+  value)` side passes laid on a copy and measured until the place reads the value, then
+  laid for real from the same stream.
+- `stump(place, strength, direction)` blends the channel along a path or over a place,
+  moved not removed, with a small loss; `kneaded(place, strength)` and `plastic(place)`
+  lift toward a ghost that grows with the darkness, never to white. Kinds `stump` and
+  `lift` in the log, charged, snapshot by box, exact on replay.
+- Plan grammar: a mark with `grade=` is a `line`, `hatch=`, `scribble=` and `contour=`
+  name their place, so `cost()`, `preview()` and `rehearse()` take a drawing's pass.
+- A golden case, `helpers`.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with

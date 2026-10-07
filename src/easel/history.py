@@ -182,6 +182,10 @@ class History:
                 # A graphite mark is charged and the pencil is not, and both lay
                 # graphite rather than paint.
                 bits.append("NOTHING DREW" if r.paint < 1.0 else f"{_short(r.paint)} graphite")
+            elif r.kind == "stump" and r.dabs:
+                bits.append("NOTHING MOVED" if r.paint < 1.0 else f"{_short(r.paint)} moved")
+            elif r.kind == "lift" and r.dabs:
+                bits.append("NOTHING LIFTED" if r.paint < 1.0 else f"{_short(r.paint)} lifted")
             elif r.kind not in History.UNPAINTED_KINDS and r.dabs:
                 # Say it plainly when a mark laid no paint: the painter is looking
                 # at the log precisely because the canvas did not change.

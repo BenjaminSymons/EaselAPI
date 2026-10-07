@@ -303,7 +303,10 @@ def test_a_spelled_out_signature_names_all_of_it(label, fn, call):
 
 #: The key that says which kind a plan entry is, for every kind a plan can lay.
 PLAN_KIND_KEYS = {"stroke": "points", "mass": "shape", "sweep": "edge",
-                  "scumble": "band", "cover": "cover"}
+                  "scumble": "band", "cover": "cover",
+                  # The graphite medium's: a mark by its grade, the helpers by name.
+                  "line": "grade", "hatch": "hatch", "scribble": "scribble",
+                  "contour": "contour"}
 
 
 def _grammar() -> str:

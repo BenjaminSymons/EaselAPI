@@ -242,6 +242,20 @@ _FILLED_TOOTH = 0.30
 #: by ``(1 - graphite) ** _BURNISH``. The one number in the medium nothing else in the
 #: engine constrains; calibrated on the value scale in ``CALIBRATION.md``.
 _BURNISH = 0.5
+#: What a stump takes away as it blends: the graphite is redistributed, not removed,
+#: less this share of what it moved, which is what the stump's own paper keeps.
+_STUMP_LOSS = 0.05
+#: How far a stump blends, as a share of the canvas long side: eight pixels at 1024,
+#: about a millimetre and a half of paper. Along its direction it reaches twice this,
+#: across it half.
+_STUMP_REACH = 8.0 / 1024.0
+#: What an eraser leaves behind -- the ghost -- as a share of the graphite it lifts
+#: from: ``g * (_GHOST_BASE + _GHOST_SLOPE * g)``. A function of the local darkness
+#: rather than of the softest grade present, which a scalar channel does not hold;
+#: the soft grades are the dark ones, so the darker the mark the more it leaves,
+#: which is the same rule from the paper's side. Calibrated on a lifted value scale.
+_GHOST_BASE = 0.03
+_GHOST_SLOPE = 0.25
 
 
 class Canvas:
@@ -867,6 +881,97 @@ class Canvas:
         if landed > 0.0:
             self.has_graphite = True
         return landed
+
+    def stump_graphite(self, cover: np.ndarray, origin: tuple[int, int], strength: float,
+                       direction: float | None) -> float:
+        """Blend the graphite under ``cover``: redistribute it, with a small loss.
+
+        A stump is a roll of paper dragged over the drawing. What it does is move
+        graphite from where there is more to where there is less, over a reach of a
+        millimetre or two (:data:`_STUMP_REACH`), biased along the direction it is
+        dragged -- and it takes a little away with it (:data:`_STUMP_LOSS`). Nothing
+        else in the engine convolves a channel; this is a plain average over a disc,
+        or over an ellipse twice as long along ``direction`` as it is across, taken
+        from the plane with its surroundings so the blend reads what lies just
+        outside the cover too.
+
+        Args:
+            cover: how much of each pixel the stump reaches, ``0..1``, over the box
+                ``origin`` names -- a shape's coverage, or the soft footprint of a path.
+            origin: the canvas pixel of ``cover[0, 0]``, ``(x0, y0)``.
+            strength: how far toward the blended value each pixel moves, ``0..1``.
+            direction: the drag's direction in degrees, screen angle, or ``None`` for
+                a stump worked in every direction.
+
+        Returns:
+            How much graphite moved, as the sum of the change over the cover.
+        """
+        x0, y0 = origin
+        h, w = cover.shape
+        if not self.has_graphite or h == 0 or w == 0:
+            return 0.0
+        s = float(np.clip(strength, 0.0, 1.0))
+        reach = max(2, int(round(self.long_side * _STUMP_REACH)))
+        # The offsets of the kernel: a disc, or an ellipse along the direction.
+        ks = np.arange(-2 * reach, 2 * reach + 1)
+        dy, dx = np.meshgrid(ks, ks, indexing="ij")
+        if direction is None:
+            inside = (dx * dx + dy * dy) <= reach * reach
+        else:
+            theta = math.radians(float(direction))
+            u = dx * math.cos(theta) + dy * math.sin(theta)
+            v = -dx * math.sin(theta) + dy * math.cos(theta)
+            inside = (u / (2.0 * reach)) ** 2 + (v / max(0.5 * reach, 1.0)) ** 2 <= 1.0
+        offsets = list(zip(dy[inside].tolist(), dx[inside].tolist(), strict=True))
+        pad = 2 * reach
+        # The plane around the box, padded past the canvas edge by repeating it, so a
+        # blend at the frame reads the paper there and not zero.
+        py0, py1 = max(0, y0 - pad), min(self.height, y0 + h + pad)
+        px0, px1 = max(0, x0 - pad), min(self.width, x0 + w + pad)
+        window = np.pad(self.graphite[py0:py1, px0:px1],
+                        ((pad - (y0 - py0), pad - (py1 - (y0 + h))),
+                         (pad - (x0 - px0), pad - (px1 - (x0 + w)))),
+                        mode="edge")
+        acc = np.zeros((h, w), dtype=np.float32)
+        for oy, ox in offsets:
+            acc += window[pad + oy:pad + oy + h, pad + ox:pad + ox + w]
+        blurred = acc / float(len(offsets))
+        g = self.graphite[y0:y0 + h, x0:x0 + w]
+        move = s * cover * (blurred - g)
+        new = (g + move) * (1.0 - _STUMP_LOSS * s * cover)
+        moved = float(np.abs(move).sum())
+        np.clip(new, 0.0, 1.0, out=new)
+        g[:] = new
+        return moved
+
+    def lift_graphite(self, cover: np.ndarray, origin: tuple[int, int], lift: float) -> float:
+        """Lift graphite under ``cover``: a repair with a residue, not an undo.
+
+        An eraser takes ``lift`` of the way from what is there down to the ghost it
+        leaves -- ``g * (_GHOST_BASE + _GHOST_SLOPE * g)`` -- so nothing lifts to
+        white, and a dark soft mark leaves more behind than a light hard one, which is
+        what a highlight pulled out of a worked passage looks like on paper.
+
+        Args:
+            cover: how much of each pixel the eraser reaches, ``0..1``, over the box
+                ``origin`` names.
+            origin: the canvas pixel of ``cover[0, 0]``.
+            lift: the share of the liftable graphite taken, ``0..1``.
+
+        Returns:
+            How much graphite was lifted, as the sum of the change over the cover.
+        """
+        x0, y0 = origin
+        h, w = cover.shape
+        if not self.has_graphite or h == 0 or w == 0:
+            return 0.0
+        g = self.graphite[y0:y0 + h, x0:x0 + w]
+        ghost = g * (_GHOST_BASE + _GHOST_SLOPE * g)
+        taken = float(np.clip(lift, 0.0, 1.0)) * cover * (g - ghost)
+        lifted = float(taken.sum())
+        np.subtract(g, taken, out=g)
+        np.clip(g, 0.0, 1.0, out=g)
+        return lifted
 
     def wetness_at(self, cx: float, cy: float) -> float:
         """Wetness at one point, in pixel coordinates. Cheap: no window average."""

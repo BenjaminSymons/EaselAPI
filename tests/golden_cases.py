@@ -31,7 +31,7 @@ _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO / "src") not in sys.path:  # pragma: no cover - import plumbing
     sys.path.insert(0, str(_REPO / "src"))
 
-from easel.regions import Region, blob, hull, polygon, ribbon, roughen  # noqa: E402
+from easel.regions import Region, blob, ellipse, hull, polygon, ribbon, roughen  # noqa: E402
 from easel.session import Session  # noqa: E402
 from easel.texture import TEXTURES  # noqa: E402
 
@@ -312,6 +312,37 @@ def build_graphite() -> np.ndarray:
     return s.canvas.to_srgb8()
 
 
+def draw_helpers(s: Session) -> None:
+    """The graphite medium's helpers, each once, on cartridge: a hatch at an angle on
+    a rectangle and a crosshatch cut against a shape; a contour with its corners; a
+    scribble; a tone solved to a value; a stump dragged along a path through a hatch and
+    one worked over a place; a kneaded lift and a plastic highlight. Each is a way the
+    drawing could silently change: the pass geometry, the zigzag, the solve, the blur
+    kernel, the ghost."""
+    s.hatch(Region(0.04, 0.06, 0.40, 0.42), angle=35, grade="HB", spacing=0.012)
+    s.crosshatch(blob((0.72, 0.24), 0.20, 0.16, seed=4, name="blob"), angles=(20, 110),
+                 grade="2B", spacing=0.014)
+    s.contour(polygon([(0.06, 0.52), (0.30, 0.48), (0.34, 0.70), (0.10, 0.74)]),
+              grade="4B", pressure="taper")
+    s.scribble(hull([(0.40, 0.50), (0.60, 0.46), (0.62, 0.72), (0.42, 0.74)]), density=1.0)
+    s.tone(Region(0.68, 0.50, 0.96, 0.72), 0.42, grade="2B")
+    s.stump([(0.06, 0.30), (0.36, 0.22)], strength=0.8)
+    s.stump(Region(0.68, 0.50, 0.82, 0.72), strength=0.6)
+    s.hatch(Region(0.06, 0.80, 0.96, 0.96), angle=0, grade="2B", spacing=0.01)
+    s.kneaded(Region(0.10, 0.82, 0.26, 0.94), strength=0.6)
+    s.plastic(ellipse((0.60, 0.88), 0.05, 0.05))
+    s.kneaded(ellipse((0.82, 0.88), 0.07, 0.06), strength=0.9)
+
+
+def build_helpers() -> np.ndarray:
+    """The helpers, on cartridge. Returns 8-bit sRGB."""
+    w, h = GOLDEN_SIZE
+    s = Session(w, h, texture="cartridge", ground="white", seed=19, timelapse=False,
+                medium="graphite")
+    draw_helpers(s)
+    return s.canvas.to_srgb8()
+
+
 def build_pencils() -> np.ndarray:
     """Every panel of ``samples/pencils.png``, stacked, as one array -- the medium's
     sampler, hashed the way the brush sampler is, without its labels."""
@@ -368,6 +399,7 @@ CASES["shapes"] = build_shapes
 CASES["sweep"] = build_sweep
 CASES["edges"] = build_edges
 CASES["graphite"] = build_graphite
+CASES["helpers"] = build_helpers
 CASES["sampler"] = build_sampler
 CASES["pencils"] = build_pencils
 

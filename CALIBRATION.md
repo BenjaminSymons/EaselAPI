@@ -343,6 +343,50 @@ the filled-tooth term (`_FILLED_TOOTH`, `0.30`) are the two numbers here nothing
 constrains; both are starting values, and the first drawing's log is where they get
 measured.
 
+### The stump and the erasers
+
+A patch `0.40 x 0.40` at the centre of a `1024x768` cartridge canvas, toned with
+`tone()`, then stumped or lifted once, and read over its middle three ways: the share of
+its graphite kept, the spread of the channel (its standard deviation), and what
+`compare()` reads, the median of the values view. `scripts/probe_graphite_lifts.py`.
+
+**A stump keeps the graphite and lightens what the median reads.** Over a `2B` tone at
+`0.45`:
+
+| `strength` | graphite kept | sd before → after | median value before → after |
+|---|---|---|---|
+| 0.3 | 98.5% | 0.218 → 0.155 | 0.431 → 0.467 |
+| 0.5 | 97.5% | 0.218 → 0.115 | 0.431 → 0.494 |
+| 0.8 | 96.1% | 0.218 → 0.064 | 0.431 → 0.530 |
+| 1.0 | 95.1% | 0.218 → 0.048 | 0.431 → 0.542 |
+
+The loss is the twentieth `_STUMP_LOSS` sets and no more; the spread falls by four
+fifths at full strength. **The value moves the other way from the graphite**: a toned
+patch is dark pixels and the tooth's white holes, and the median sits on the dark
+pixels; blended, the same graphite is spread thin over every pixel and the median reads
+`0.11` lighter. So a passage to be stumped is toned a tenth darker than it should read,
+or toned again after — and a value the plan names is read after the stump, not before.
+
+**An eraser leaves a ghost, and a second plastic pass takes most of it.** One pass over
+the patch:
+
+| toned | eraser | graphite left | reads |
+|---|---|---|---|
+| `HB` to 0.60 | `kneaded` 0.3 / 0.5 / 0.7 | 74% / 57% / 39% | 0.69 / 0.75 / 0.81 |
+| `HB` to 0.60 | `plastic`, then twice | 20% | 0.89, then 0.95 |
+| `2B` to 0.45 | `kneaded` 0.3 / 0.5 / 0.7 | 75% / 59% / 42% | 0.56 / 0.65 / 0.74 |
+| `2B` to 0.45 | `plastic`, then twice | 24% | 0.84, then 0.94 |
+| `6B` to 0.20 | `kneaded` 0.3 / 0.5 / 0.7 | 77% / 61% / 46% | 0.37 / 0.49 / 0.61 |
+| `6B` to 0.20 | `plastic`, then twice | 29% | 0.74, then 0.92 |
+
+Paper reads `0.957`. The ghost (`_GHOST_BASE` `0.03`, `_GHOST_SLOPE` `0.25`) is a
+function of the local darkness and nothing else — the softest grade present is not
+held per pixel, and the dark marks are the soft ones — so a `6B` passage lifted hard
+reads `0.74` where an `HB` one reads `0.89`, and either lifted twice is within three
+hundredths of the paper. That second number is the rule for the guide: *a highlight is
+paper never touched*; a highlight lifted is a value, and the check's *erased more than
+twice* line (step 5) is where it will be measured on a drawing.
+
 ---
 
 ## Wetness

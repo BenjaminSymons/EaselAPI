@@ -50,6 +50,7 @@ the two axes as a point is, so an oval in pixels is `ellipse(p, *s.px(rx, ry))`.
 | `pencil`, `erase`, `mark`, `unmark` | `stroke`, `dab` |
 | `dry` | `smudge`, `glaze` — marks like any other |
 | | `line` — a stroke of the graphite medium, charged like paint. The free pencil beside it is the underdrawing, and a drawing uses both |
+| | `hatch`, `crosshatch`, `scribble`, `tone` — one per line laid; `contour`, `stump`, `kneaded`, `plastic` — one each. The erasers are repairs with a residue, charged like marks |
 | `look`, `preview`, `rehearse`, `cost`, `compare`, `prepare` | `block_in`, `sweep`, `scumble`, `cover` — **once per pass**, so one call is ten to thirty |
 | `undo` (it removes what was charged) | |
 | `sketch(reference, level=, pressure=, areas=)` — it lays pencil, and is an assisted mode the log records; `areas=` lays some of the numbered masses rather than all of them | |
@@ -81,6 +82,13 @@ returns the number, and `s.cost_line(plan)` says *why* it is that number.
 | `cover(place, color)` | a repair, with every clause of the burying recipe set | one per pass |
 | `pencil(points)` | graphite under the paint. A list of points is splined, which rounds every corner and bows a closed outline outward; a shape handed over whole — a `Polygon`, a `Region`, `"D4"` — is drawn as its own outline, corners kept, and so is one handed to `guide()` | 0 |
 | `line(points, grade="HB", pressure=0.5, tip="point", width=None, smooth=None, note="")` | one stroke of the **graphite medium** — the drawing as the picture, in a channel nothing buries. See *The graphite medium* below | 1 |
+| `hatch(place, angle=None, spacing=None, grade="HB", pressure="taper", tip="point", width=None, overhang=0.0, note="")` | a place filled with parallel lines, each a `line`; `crosshatch(place, angles=(30, 120))` is one hatch per angle | one per line |
+| `contour(place, grade="HB", pressure="taper", tip="point", width=None, closed=True, note="")` | one line round a shape's outline, or along a run of points, corners kept | 1 |
+| `scribble(place, density=1.0, grade="2B", pressure=0.5, tip="point", width=None, note="")` | loose zigzag strokes across a place, four at `density=1` | one per stroke |
+| `tone(place, value, grade="2B", pressure=0.6, tip="side", angle=None, note="")` | side passes over a place until it reads `value`, measured as it is laid | one per line |
+| `stump(place, strength=0.5, direction=None, width=0.03, note="")` | blends the graphite along a path or over a place: moved, not removed, less a twentieth | 1 |
+| `kneaded(place, strength=0.5, note="")` | lifts `strength` of the graphite over a place, soft-edged, leaving a ghost | 1 |
+| `plastic(place, note="")` | lifts hard with a clean edge, for a highlight, leaving the same ghost | 1 |
 | `erase(region=None)` | takes **both** drawings out — the graphite and the `guide()` overlay | 0 |
 | `dry(amount=1.0, region=None)` | takes the wetness out so new paint covers rather than mixes | 0 |
 
@@ -435,6 +443,39 @@ stroke lays flatter, which is what worked paper does and the only *burnish* ther
 the first cut. `smooth` and `note` are as on `pencil()`; a shape handed over whole is
 drawn as its own outline.
 
+**The helpers** lay lines, so the log, the undo and the film see one kind of mark:
+
+```python
+s.hatch(place, angle=None, spacing=None, grade="HB", pressure="taper", tip="point",
+        width=None, overhang=0.0, note="")   # parallel lines; angle as block_in's
+                                             # direction; spacing left off is 2.5
+                                             # widths (point) or half a width (side)
+s.crosshatch(place, angles=(30, 120))        # hatch(place, angle=[30, 120]), any
+                                             # hatch argument beside it
+s.contour(place, grade="HB", pressure="taper", tip="point", width=None, closed=True,
+          note="")                           # one line round the outline, corners kept
+s.scribble(place, density=1.0, grade="2B", pressure=0.5, tip="point", width=None,
+           note="")                          # 4 zigzag strokes per unit of density
+s.tone(place, value, grade="2B", pressure=0.6, tip="side", angle=None, note="")
+                                             # passes until the place reads value
+                                             # (0 black, 1 white); within 0.02, or it
+                                             # says the grade cannot reach it
+s.stump(place, strength=0.5, direction=None, width=0.03, note="")
+                                             # a path to drag along, or a place to work
+s.kneaded(place, strength=0.5, note="")      # lifts strength of the graphite, soft edge
+s.plastic(place, note="")                    # lifts 0.92 of it, clean edge
+```
+
+`hatch`, `scribble` and `tone` carry their place and value into the log as a mass
+does, so `thumbnail()` draws them; `cost()`, `preview()` and `rehearse()` take a line
+(`grade=`), a hatch (`hatch=`), a scribble (`scribble=`) and a contour (`contour=`) as
+plan entries. A stump redistributes the graphite over a reach of about eight pixels at
+1024, twice that along its direction and half across, and keeps a twentieth of what it
+moved; it fills the tooth as it goes. An eraser lifts toward a ghost rather than to
+white — `g × (0.03 + 0.25 g)` of what was there stays, so a dark soft mark leaves more
+than a light hard one — and a second pass lifts again from what is left. Neither
+eraser burnishes; the plastic eraser's burnish is measured before it is built.
+
 ---
 
 ## Looking, planning, measuring
@@ -497,8 +538,12 @@ A **plan** is one object all four planning verbs read: a list whose entries are 
 a dict of `stroke` arguments, a dict with `shape=` and any `block_in` argument, a dict
 with `edge=` and any `sweep` argument, a passage — `band=`, `color_a=`, `color_b=` and
 any `scumble` argument — or a burial, `cover=` and any `cover` argument. A bare place or
-shape is a mass. A film is a mark, with the glaze verb's brush and opacity written out
-because an entry takes a stroke's, and `to_value=` stays with the verb:
+shape is a mass. In the graphite medium: a mark with `grade=` is a `line` (and a bare
+path in a drawing is one at the default grade), `hatch=` a place and any `hatch`
+argument is a hatch, `scribble=` a scribble and `contour=` a contour; `tone` measures
+as it lays and is not planned. A film is a mark, with the glaze verb's brush and
+opacity written out because an entry takes a stroke's, and `to_value=` stays with the
+verb:
 
 ```python
 {"points": band, "glaze": True, "brush": "round_soft", "color": "warm", "opacity": 0.18}
@@ -872,7 +917,8 @@ A **plan** is a list of entries, or one on its own: a mass is an object with `sh
 and any `block_in` argument, a sweep one with `edge` and any `sweep` argument, a passage
 one with `band`, `color_a` and `color_b`, a burial one with `cover`, and a mark a list of
 points or an object with `points` — a film among them, with `"glaze": true` and the
-glaze verb's brush and opacity, as under *Looking, planning, measuring*.
+glaze verb's brush and opacity, as under *Looking, planning, measuring*. In a drawing a
+mark with `grade` is a line, and `hatch`, `scribble` and `contour` name their place.
 
 ```json
 {"shape": {"blob": "D5", "radius": 0.12, "seed": 3},
