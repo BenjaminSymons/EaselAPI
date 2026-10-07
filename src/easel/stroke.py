@@ -666,6 +666,7 @@ def draw_graphite(
     rng: np.random.Generator | None = None,
     smooth: bool = True,
     dry_run: bool = False,
+    upto: float | None = None,
 ) -> StrokeResult:
     """Draw one stroke of graphite into the canvas's ``graphite`` channel.
 
@@ -694,6 +695,12 @@ def draw_graphite(
         smooth: fit a spline through the points.
         dry_run: work the stroke out and lay none of it, as :func:`paint_stroke` does
             for a counted rehearsal.
+        upto: lay only this share of the stroke's dabs, ``0..1``, in travel order --
+            the stroke as it stood partway along. What a film's stroke motion is made
+            of (:mod:`easel.film`): the wander is drawn whole either way, so the first
+            third of a stroke laid this way is the first third of the whole stroke.
+            Never on a canvas the whole stroke will then be laid on: the field is
+            gathered and laid once, so the two would add.
 
     Returns:
         A :class:`StrokeResult` whose ``paint`` is how much graphite landed.
@@ -745,7 +752,8 @@ def draw_graphite(
     min_x = min_y = 1.0
     max_x = max_y = 0.0
     stamped = 0
-    for i in range(n):
+    last = n if upto is None else max(1, int(round(float(np.clip(upto, 0.0, 1.0)) * n)))
+    for i in range(last):
         cx, cy, r = float(xs[i]), float(ys[i]), float(radii[i])
         if r < 0.6:
             continue

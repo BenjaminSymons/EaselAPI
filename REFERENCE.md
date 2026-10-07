@@ -758,10 +758,12 @@ an index would repaint every painting made before it.
 ```python
 Session(width=1024, height=768, texture=None, ground="white", seed=0,
         timelapse=True, out_dir="out", texture_strength=1.0, budget=None,
-        medium="paint")
+        medium="paint", capture=False)
                    # timelapse=<px> is the frame's long side; the default is 360.
                    # The frames stay in memory: the .easel file keeps none.
-                   # texture=None is "linen" for paint and "cartridge" for graphite
+                   # texture=None is "linen" for paint and "cartridge" for graphite.
+                   # capture=True keeps every look, rehearsal and pass beside the
+                   # log, for the film (s.captures, s.passes, s.film, s.viewer)
 s.size   s.aspect   s.ground   s.stroke_count   s.spent   s.remaining   s.budget_line()
 s.px(x, y)   s.px_size(r)          # a pixel as a place; a length in pixels as a size
 s.marks  s.mark(name, x, y)   s.pt(name)   s.unmark(name)
@@ -775,10 +777,30 @@ s.replay(upto=None, frames=None)   # frames=<px> records a time-lapse as it rebu
                    # which is what timelapse_gif(from_log=True) is made of: the film
                    # at any size, from a painting that recorded no frames at all
 s.save(path)       Session.load(path)
+s.film(path, fps=12.0, every=1, scale=720, hold_looks=1.0, stroke_motion=False,
+       captions=False)        # .mp4 (ffmpeg), .gif, or a directory of PNG frames:
+                              # the log walked a mark at a time, a frame per mark
+s.viewer(out_dir, fps=12.0, every=1, scale=720, hold_looks=1.0, stroke_motion=False,
+         captions=False)      # index.html + film.json + frames/: scrub to any mark
+s.captures  s.passes   s.keep_pass(target, scripts, sources, since)
+                              # what a capturing session kept; the shell and the
+                              # server call keep_pass after every pass
 ```
 
+**The film** is the other time-lapse. `timelapse` plays the frames the painting kept,
+thinned past 200; `film` rebuilds the log onto a fresh session one record at a time,
+so a 400-mark drawing is 400 frames. Under `capture=True` each `look()` and
+`rehearse()` is kept beside the log with the log index it was taken at, and the film
+holds it there for `hold_looks` seconds, re-rendered on the rebuilt canvas with its grid
+(a rehearsal from its own PNG, when it is still in `out_dir`); each pass `easel run` or
+the server runs is kept with its scripts' text and the line each mark was laid from, and
+the viewer shows that line beside the mark. `stroke_motion` lays each graphite stroke
+over three frames — its first third, its second, the whole — so a long line travels;
+a paint stroke arrives whole. Nothing here is a record: the log indexes the stream, and
+a look that took an index would repaint every painting made before it.
+
 ```bash
-easel new p.easel --size 1024x768 --texture linen --ground toned_grey --seed 7 --budget 300 [--frame-px 720] [--no-prelude]
+easel new p.easel --size 1024x768 --texture linen --ground toned_grey --seed 7 --budget 300 [--frame-px 720] [--no-prelude] [--capture]
 easel run p.easel pass.py [p3.py p4.py ...] [--rehearse] [--count] [--alternatives] [--thumbnail] [--prelude other.py] [--no-prelude] [--check]
 easel look p.easel [--grid] [--fine] [--values] [--region D4] [--reference ref.jpg] [--diff]
                    [--no-sketch] [--no-marks] [--scale 512]
@@ -790,6 +812,8 @@ easel prepare p.easel ref.jpg [--level coarse]
 easel undo p.easel 3
 easel export p.easel painting.png
 easel timelapse p.easel p.gif [--fps 8] [--every 3] [--scale 240] [--from-log]
+easel film p.easel out.mp4 [--fps 12] [--every 1] [--scale 720] [--hold-looks 1.0] [--stroke-motion]
+                   [--captions] [--html viewer/]      # out.gif, or a directory of frames
 easel check p.easel [--subject-share 0.32]
 easel log p.easel [-n 20] [--check | --reports]
 easel brushes

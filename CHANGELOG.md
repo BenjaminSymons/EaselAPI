@@ -75,6 +75,25 @@ call with its place and value kept for the thumbnail, as a mass is.
   name their place, so `cost()`, `preview()` and `rehearse()` take a drawing's pass.
 - A golden case, `helpers`.
 
+**Step 4: capture and the film.** Beside the log, never in it: the log indexes the
+stream, and nothing new takes an index.
+
+- `Session(capture=True)` (`easel new --capture`) keeps each `look()` and `rehearse()`
+  with the log index it was taken at (`s.captures`), and each pass `easel run` or the
+  server runs with its scripts' text and the line each mark was laid from
+  (`s.passes`, through `keep_pass`). Saved in the file, read with `.get`.
+- `easel film` and `s.film()`: the log walked onto a fresh session a record at a time
+  (`easel.film`), a frame per mark and not the time-lapse's thinned sequence; the
+  captured looks held where they were taken, re-rendered on the rebuilt canvas; each
+  graphite stroke over three frames with `--stroke-motion` (`draw_graphite(upto=)`);
+  captions. MP4 through ffmpeg -- the `film` extra brings imageio-ffmpeg's, or one on
+  the path -- GIF through Pillow, or a directory of PNG frames.
+- `easel film --html DIR` and `s.viewer()`: one page, plain JavaScript, a scrubber and
+  play at a chosen rate, the mark under the scrubber, the pass script with its line
+  highlighted, and the painter's last look. Frames are separate PNGs loaded as shown.
+- `Session.replay()` builds its fresh session through `_fresh_session`, which the film
+  shares. Nothing about a rebuild moved.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with

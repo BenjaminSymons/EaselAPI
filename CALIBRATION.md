@@ -353,12 +353,12 @@ its graphite kept, the spread of the channel (its standard deviation), and what
 **A stump keeps the graphite and lightens what the median reads.** Over a `2B` tone at
 `0.45`:
 
-| `strength` | graphite kept | sd before → after | median value before → after |
+| `strength` | graphite kept | sd before to after | median value before to after |
 |---|---|---|---|
-| 0.3 | 98.5% | 0.218 → 0.155 | 0.431 → 0.467 |
-| 0.5 | 97.5% | 0.218 → 0.115 | 0.431 → 0.494 |
-| 0.8 | 96.1% | 0.218 → 0.064 | 0.431 → 0.530 |
-| 1.0 | 95.1% | 0.218 → 0.048 | 0.431 → 0.542 |
+| 0.3 | 98.5% | 0.218 to 0.155 | 0.431 to 0.467 |
+| 0.5 | 97.5% | 0.218 to 0.115 | 0.431 to 0.494 |
+| 0.8 | 96.1% | 0.218 to 0.064 | 0.431 to 0.530 |
+| 1.0 | 95.1% | 0.218 to 0.048 | 0.431 to 0.542 |
 
 The loss is the twentieth `_STUMP_LOSS` sets and no more; the spread falls by four
 fifths at full strength. **The value moves the other way from the graphite**: a toned

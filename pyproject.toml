@@ -47,6 +47,10 @@ mixbox = ["pymixbox>=2.0"]
 # Held below 3 because the tool-registration API is what this pins against --
 # 2.x is where FastMCP became MCPServer, and 1.x will not import easel.mcp_server.
 mcp = ["mcp>=2.0,<3"]
+# The film's MP4 (`easel film out.mp4`): imageio-ffmpeg carries an ffmpeg binary, about
+# 30 MB, which is why it is an extra. The GIF and the PNG frames need nothing, and an
+# ffmpeg already on the path is used without it.
+film = ["imageio-ffmpeg>=0.4"]
 dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]

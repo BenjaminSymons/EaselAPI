@@ -206,6 +206,13 @@ class Session:
             work -- because the engine refuses nothing (``REFERENCE.md``: *the budget
             is a plan, not a lock*). The marks of the medium are :meth:`line` and the
             helpers built on it.
+        capture: keep what the painter saw and ran beside the log, for the film:
+            each :meth:`look` and :meth:`rehearse` with the log index it was taken
+            at, and each pass ``easel run`` or the server runs with its scripts'
+            text. Saved in the file, never in the log, which indexes the stream.
+            :meth:`film` then plays the painting back with the looks held where the
+            painter stopped to check, and :meth:`viewer` writes a page that scrubs
+            to any mark beside the line of the script that laid it.
 
     Example::
 
@@ -227,6 +234,7 @@ class Session:
         texture_strength: float = 1.0,
         budget: int | None = None,
         medium: str = "paint",
+        capture: bool = False,
     ) -> None:
         if medium not in MEDIA:
             raise ValueError(
@@ -234,6 +242,16 @@ class Session:
             )
         #: What the picture is made of, ``"paint"`` or ``"graphite"``. See the class.
         self.medium = str(medium)
+        #: Whether the painter's own looks, rehearsals and passes are kept beside the
+        #: log for the film (:mod:`easel.film`). See :meth:`captures`.
+        self.capture = bool(capture)
+        # The sidecar itself: each look and rehearsal as ``{"kind", "at", "file",
+        # "args"}``, keyed by the log's length at the moment -- as a `PassReport.at`
+        # is -- and never a record, because the log indexes the random stream. And
+        # each pass run from the shell or the server: its scripts' names and text, the
+        # span of the log it laid, and the line each of its marks was laid from.
+        self._captures: list[dict] = []
+        self._passes: list[dict] = []
         if texture is None:
             texture = "cartridge" if self.medium == "graphite" else "linen"
         self.seed = int(seed)
@@ -3121,7 +3139,78 @@ class Session:
             guides=self.guides,
         )
         self._last_look = current
-        return save_look(img, self._look_path(path))
+        written = save_look(img, self._look_path(path))
+        self._capture("rehearse" if self._is_trial else "look", written,
+                      grid=grid, values=values, region=region, sketch=sketch, marks=marks)
+        return written
+
+    def _capture(self, kind: str, path: Path, **args) -> None:
+        """Keep one look or rehearsal beside the log, when the session captures.
+
+        ``at`` is the log's length now, in the painting's own numbering -- a trial
+        copy's log starts where the painting's stood -- so ``s.replay(upto=at)`` is the
+        canvas the painter was looking at. The file is kept by name only: it is in
+        ``out_dir`` already, and the film re-renders the view from the rebuilt canvas
+        rather than reading it back, so a look whose PNG has gone still plays.
+        """
+        if not self.capture:
+            return
+        plain = {}
+        for key, value in args.items():
+            if value is None or value is False:
+                continue
+            if isinstance(value, (bool, int, float, str)):
+                plain[key] = value
+            elif isinstance(value, Region):
+                plain[key] = list(value.bounds)
+            elif isinstance(value, Polygon):
+                plain[key] = list(value.bounds)
+            else:
+                plain[key] = str(value)
+        self._captures.append({"kind": kind,
+                               "at": int(self._index_base + len(self.history.records)),
+                               "file": Path(path).name, "args": plain})
+
+    @property
+    def captures(self) -> list[dict]:
+        """What the painter saw, beside the log: each look and rehearsal, as
+        ``{"kind": "look" | "rehearse", "at": <log index>, "file": <PNG name>, "args":
+        {...}}``, oldest first. Kept only when the session was made with
+        ``capture=True``; what :meth:`film` holds a frame for."""
+        return list(self._captures)
+
+    @property
+    def passes(self) -> list[dict]:
+        """Each pass the shell or the server ran on this painting, when it captures:
+        ``{"scripts", "mode", "at", "until", "sources": [[name, text], ...], "lines":
+        {<log index>: [file, line], ...}}``. What the viewer shows beside a mark."""
+        return list(self._passes)
+
+    def keep_pass(self, target: Session, scripts: str, sources, since: int) -> None:
+        """Keep a pass's scripts and the lines its marks were laid from, when capturing.
+
+        Called by ``easel run`` and the server's ``run`` beside :meth:`_keep_report`,
+        with the same ``target`` and ``since``: the session the pass ran against, and
+        the log index it began at in that session's log. ``sources`` is ``[(name,
+        text), ...]``, the scripts as they ran. The call sites are read off the
+        target's own, which a file never keeps -- this is the one place they are
+        written down, and only for a painting that asked.
+        """
+        if not self.capture:
+            return
+        mode = ("painted" if target is self
+                else ("counted" if target._counting else "rehearsed"))
+        base = int(target._index_base)
+        start, end = base + int(since), base + len(target.history.records)
+        lines = {}
+        for index in range(int(since), len(target.history.records)):
+            site = target._sites.get(index)
+            if site is not None and site.line:
+                lines[str(base + index)] = [site.file, int(site.line)]
+        self._passes.append({"scripts": str(scripts), "mode": mode, "at": start,
+                             "until": end,
+                             "sources": [[str(n), str(t)] for n, t in sources],
+                             "lines": lines})
 
     def look_image(self, **kwargs) -> Image.Image:
         """The same view as :meth:`look`, returned as a PIL image instead of a path."""
@@ -3502,7 +3591,10 @@ class Session:
             reference=ref_img,
             marks=self.marks or None,
         )
-        return save_look(img, self._look_path(path, "rehearse"))
+        written = save_look(img, self._look_path(path, "rehearse"))
+        self._capture("rehearse", written, grid=grid, values=values, region=region,
+                      laid=len(trial.history.records))
+        return written
 
     def _rehearse_sheet(self, strokes, vary: dict, reference=None, region=None,
                         grid: bool | str = False, values: bool = False,
@@ -3525,8 +3617,11 @@ class Session:
                 render_look(trial.canvas, scale=panel, grid=grid, values=values,
                             region=region, reference=ref_img, marks=self.marks or None),
             ))
-        return save_look(label_sheet(panels, columns=columns),
-                         self._look_path(path, "rehearse"))
+        written = save_look(label_sheet(panels, columns=columns),
+                            self._look_path(path, "rehearse"))
+        self._capture("rehearse", written, grid=grid, values=values, region=region,
+                      vary=", ".join(sorted(vary)))
+        return written
 
     def rehearse_each(
         self,
@@ -4011,6 +4106,12 @@ class Session:
         trial = Session.__new__(Session)
         trial.seed = self.seed
         trial.medium = self.medium
+        # A copy's looks are the painting's rehearsal frames: kept on the copy as it
+        # looks, adopted by `_keep_report` when the pass is kept. A plain scratch()
+        # a painter looks on from Python keeps its own, which go with it.
+        trial.capture = self.capture
+        trial._captures = []
+        trial._passes = []
         # A separate generator holding this one's current state. `block_in` and
         # `sweep` draw their pass wander from here, so a copy of the state is what
         # makes a rehearsed mass the same mass, pixel for pixel, when it is painted
@@ -5729,6 +5830,10 @@ class Session:
             mode = "painted"
         else:
             mode = "counted" if target._counting else "rehearsed"
+            # And what the copy's pass looked at: its looks are rehearsal frames of
+            # this painting, already keyed in the painting's numbering.
+            self._captures.extend(target._captures)
+            target._captures = []
         self._reports.append(PassReport(str(scripts), mode,
                                         int(target._index_base) + int(since), str(text)))
 
@@ -5953,6 +6058,11 @@ class Session:
             # opens as a painting with no drawing in it -- which is what it is.
             "has_graphite": bool(self.canvas.has_graphite),
             "medium": self.medium,
+            # What the painter saw and ran, beside the log, for the film. New keys
+            # read with `.get`: a file written before them opens with none.
+            "capture": bool(self.capture),
+            "captures": list(self._captures),
+            "passes": list(self._passes),
             "assisted": list(self.assisted),
             # What the engine has said at a call, in order. Beside the log, never in
             # it -- see :meth:`_notify` -- and a key an older build does not read, so
@@ -6047,6 +6157,11 @@ class Session:
                     raise ValueError(f"meta names a medium this build does not know: "
                                      f"{medium!r}.")
                 s.medium = medium
+                s.capture = bool(meta.get("capture", False))
+                s._captures = [dict(c) for c in meta.get("captures", [])
+                               if isinstance(c, dict) and "at" in c]
+                s._passes = [dict(p) for p in meta.get("passes", [])
+                             if isinstance(p, dict) and "at" in p]
                 # Before anything that can say something, because the first thing
                 # this build says about a loaded file is often the out_dir line below.
                 # A code this build does not know is dropped rather than kept: the
@@ -6225,35 +6340,7 @@ class Session:
         asked for. Nothing else about the rebuild changes.
         """
         records = self.history.records if upto is None else self.history.records[:upto]
-        fresh = Session(
-            self.canvas.width,
-            self.canvas.height,
-            texture=self.canvas.texture_name,
-            ground=self.canvas.ground_spec,
-            seed=self.seed,
-            timelapse=self.timelapse if frames is None else frames,
-            out_dir=self.out_dir,
-            texture_strength=self.canvas.texture_strength,
-            budget=self.budget,
-            medium=self.medium,
-        )
-        for name, rgb in self.palette.slots.items():
-            fresh.palette[name] = rgb
-        fresh.marks = dict(self.marks)
-        fresh.guides = [dict(g) for g in self.guides]
-        fresh.assisted = list(self.assisted)
-        fresh._banding_told = self._banding_told
-        # The plan is beside the log rather than in it, so a rebuild from the log
-        # alone would come back with none -- and a painting that has been undone back
-        # a few marks has not changed its mind about what it is painting.
-        fresh._plan = self._plan
-        # The replayed session shares this one's out_dir. Numbering a look from the
-        # directory rather than from a per-session counter is what keeps its very
-        # next look()/preview()/rehearse()/compare() off a file this one already
-        # wrote; the preparation is carried across so that ref_shape()/sketch() etc.
-        # do not raise "No prepared reference yet" when this session has one.
-        fresh._last_look = self._last_look
-        fresh._preparation = self._preparation
+        fresh = self._fresh_session(frames)
 
         # Inside one call context, so the marks are laid without the warnings a
         # hand-laid mark gets: a replay is not a painter reaching for a pressure list.
@@ -6274,6 +6361,85 @@ class Session:
         else:
             fresh.rng.bit_generator.state = self.rng.bit_generator.state
         return fresh
+
+    def _fresh_session(self, frames: bool | int | None = None) -> Session:
+        """This painting before its first mark: what :meth:`replay` lays the log on.
+
+        The same surface, seed, budget and medium, the palette's slots, the landmarks,
+        the guides, the plan and the sidecars carried across -- everything that is
+        beside the log rather than in it -- and an empty log. :mod:`easel.film` walks
+        the records onto one of these a mark at a time, which is how a frame per mark
+        is made without :class:`~easel.history.History` thinning the sequence.
+        """
+        fresh = Session(
+            self.canvas.width,
+            self.canvas.height,
+            texture=self.canvas.texture_name,
+            ground=self.canvas.ground_spec,
+            seed=self.seed,
+            timelapse=self.timelapse if frames is None else frames,
+            out_dir=self.out_dir,
+            texture_strength=self.canvas.texture_strength,
+            budget=self.budget,
+            medium=self.medium,
+            capture=self.capture,
+        )
+        for name, rgb in self.palette.slots.items():
+            fresh.palette[name] = rgb
+        fresh.marks = dict(self.marks)
+        fresh.guides = [dict(g) for g in self.guides]
+        fresh.assisted = list(self.assisted)
+        fresh._banding_told = self._banding_told
+        # The plan is beside the log rather than in it, so a rebuild from the log
+        # alone would come back with none -- and a painting that has been undone back
+        # a few marks has not changed its mind about what it is painting. The looks
+        # and the passes likewise: what the painter saw is not undone with a mark.
+        fresh._plan = self._plan
+        fresh._captures = list(self._captures)
+        fresh._passes = list(self._passes)
+        # The replayed session shares this one's out_dir. Numbering a look from the
+        # directory rather than from a per-session counter is what keeps its very
+        # next look()/preview()/rehearse()/compare() off a file this one already
+        # wrote; the preparation is carried across so that ref_shape()/sketch() etc.
+        # do not raise "No prepared reference yet" when this session has one.
+        fresh._last_look = self._last_look
+        fresh._preparation = self._preparation
+        return fresh
+
+    def film(self, path: str | Path, fps: float = 12.0, every: int = 1,
+             scale: int | None = 720, hold_looks: float = 1.0,
+             stroke_motion: bool = False, captions: bool = False) -> Path:
+        """Write the painting as a film: an MP4, a GIF, or a directory of PNG frames.
+
+        Rebuilt from the log a mark at a time, so a 400-mark drawing is 400 frames and
+        not the thinned sequence the time-lapse keeps; a look the painter took is held
+        where it was taken, when the session captured (``Session(capture=True)``); a
+        graphite stroke travels over three frames with ``stroke_motion``. The output's
+        suffix decides the format: ``.mp4`` needs ffmpeg -- ``pip install
+        easel-paint[film]`` brings one -- ``.gif`` needs nothing, and a path with no
+        suffix is a directory of numbered PNGs. See :func:`easel.film.write_film`.
+        """
+        from easel.film import write_film
+        return write_film(self, path, fps=fps, every=every, scale=scale,
+                          hold_looks=hold_looks, stroke_motion=stroke_motion,
+                          captions=captions)
+
+    def viewer(self, out_dir: str | Path, fps: float = 12.0, every: int = 1,
+               scale: int | None = 720, hold_looks: float = 1.0,
+               stroke_motion: bool = False, captions: bool = False) -> Path:
+        """Write a self-contained page that scrubs the painting mark by mark.
+
+        ``index.html``, ``film.json`` and a ``frames/`` directory under ``out_dir``: a
+        scrubber over the frames, a play button at ``fps``, and a side panel with the
+        mark under the scrubber, the pass script that laid it with the line
+        highlighted (when the session captured its passes), and the painter's last
+        look before it. Plain JavaScript, frames loaded as they are shown. See
+        :func:`easel.film.write_viewer`.
+        """
+        from easel.film import write_viewer
+        return write_viewer(self, out_dir, fps=fps, every=every, scale=scale,
+                            hold_looks=hold_looks, stroke_motion=stroke_motion,
+                            captions=captions)
 
     def _replay_records(self, records) -> None:
         """Lay a log's records on this session, one call each, carrying their own account."""

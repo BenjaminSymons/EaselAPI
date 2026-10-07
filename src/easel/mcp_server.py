@@ -783,6 +783,8 @@ def build_server() -> MCPServer:
         said = target.notices(since=told)
         block = pass_block(target, before, said, check)
         short = Path(name).name
+        # What the film keeps of the pass, prelude first: see `easel run`.
+        kept = ([(Path(pre_name or "prelude.py").name, pre)] if pre else []) + [(short, source)]
         # Every answer is a list, because a rehearsal's look and a sheet of alternatives
         # come back as pictures: a tool the SDK is told answers in text has its answer
         # checked as text.
@@ -810,10 +812,12 @@ def build_server() -> MCPServer:
             # What the check said is the one thing a rehearsal keeps: on the
             # painting, as `easel run --rehearse` keeps it. See `Session.reports`.
             s._keep_report(target, short, before, block)
+            s.keep_pass(target, short, kept, before)
             s.save(session)
             return answer
         if result.code == 0:
             s._keep_report(target, short, before, block)
+            s.keep_pass(target, short, kept, before)
         if result.save:
             s.save(session)
         if result.code != 0:

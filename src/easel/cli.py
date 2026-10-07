@@ -136,6 +136,10 @@ def build_parser() -> argparse.ArgumentParser:
                             "film at, since the session file keeps no frames")
     p_new.add_argument("--force", action="store_true",
                        help="overwrite an existing session file")
+    p_new.add_argument("--capture", action="store_true",
+                       help="keep every look, rehearsal and pass beside the log, for "
+                            "`easel film`: what the painter saw and ran, held where "
+                            "it happened")
     p_new.add_argument("--no-prelude", action="store_true",
                        help="do not write a prelude.py beside the session. The "
                             "scaffold holds the s.plan(...) call every pass then runs "
@@ -254,6 +258,35 @@ def build_parser() -> argparse.ArgumentParser:
                            "frame size, the canvas's own when --scale is left off. "
                            "Also a full repaint, and works on a painting made with "
                            "--no-timelapse")
+
+    p_film = sub.add_parser(
+        "film", help="write the painting as a film, a mark at a time",
+        description="Rebuilt from the log one record at a time -- a frame per mark, "
+                    "not the thinned sequence the time-lapse keeps -- with the "
+                    "painter's own looks held where they were taken when the session "
+                    "was made with --capture, and each graphite stroke travelling "
+                    "over three frames with --stroke-motion. The output's suffix picks "
+                    "the format: .mp4 (needs ffmpeg: `pip install easel-paint[film]` "
+                    "brings one), .gif, or a path with no suffix for a directory of "
+                    "PNG frames. --html writes a page that scrubs to any mark beside "
+                    "the line of the script that laid it.")
+    p_film.add_argument("session", type=Path)
+    p_film.add_argument("output", type=Path, nargs="?", default=None,
+                        help=".mp4, .gif, or a directory for PNG frames")
+    p_film.add_argument("--fps", type=float, default=12.0)
+    p_film.add_argument("--every", type=int, default=1, help="a frame per this many marks")
+    p_film.add_argument("--scale", type=float, default=720, metavar="PX",
+                        help=_SCALE_HELP + " (default 720); 0 for the canvas's own")
+    p_film.add_argument("--hold-looks", type=float, default=1.0, metavar="SECONDS",
+                        help="how long each captured look is held (default 1.0); 0 "
+                             "leaves the looks out")
+    p_film.add_argument("--stroke-motion", action="store_true",
+                        help="lay each graphite stroke over three frames")
+    p_film.add_argument("--captions", action="store_true",
+                        help="a strip under each frame naming the mark and its pass")
+    p_film.add_argument("--html", type=Path, default=None, metavar="DIR",
+                        help="write the viewer -- index.html, film.json and frames/ -- "
+                             "under this directory, instead of or as well as the output")
 
     p_plan = sub.add_parser(
         "plan",
@@ -540,10 +573,11 @@ def _dispatch(args) -> int:
                        else (True if args.frame_px is None else args.frame_px)),
             out_dir=args.out_dir,
             budget=args.budget,
+            capture=args.capture,
         )
         s.save(args.session)
         print(f"Created {args.session} ({w}x{h}, {args.texture}, ground {args.ground}, "
-              f"seed {args.seed})")
+              f"seed {args.seed}{', capturing' if args.capture else ''})")
         if not args.no_prelude:
             written = _write_prelude(args.session)
             if written is not None:
@@ -614,6 +648,22 @@ def _dispatch(args) -> int:
                                            scale=_scale_px(args.scale, session),
                                            from_log=args.from_log))
         print(path)
+        return 0
+
+    if args.command == "film":
+        if args.output is None and args.html is None:
+            raise ValueError("easel film needs an output (.mp4, .gif or a directory of "
+                             "frames), --html DIR, or both.")
+        print(f"Rebuilding the film from the log, {len(session.history.records)} "
+              f"records: a full repaint, a frame per mark.", file=sys.stderr)
+        scale = _scale_px(args.scale, session)
+        common = dict(fps=args.fps, every=args.every, scale=scale,
+                      hold_looks=args.hold_looks, stroke_motion=args.stroke_motion,
+                      captions=args.captions)
+        if args.output is not None:
+            print(session.film(args.output, **common))
+        if args.html is not None:
+            print(session.viewer(args.html, **common))
         return 0
 
     if args.command == "check":
@@ -1313,11 +1363,15 @@ def _cmd_run(session: Session, args) -> int:
     # once per thing said. Filtered here and printed below, it is said once, in
     # order, on stdout, under one heading with the check. Only `EaselWarning`: a
     # painter's own script, and every library under it, warns exactly as before.
+    sources = [(s.read_text(encoding="utf-8-sig"), str(s)) for s in scripts]
+    # What the film keeps of the pass: the prelude first, since a mass laid from one of
+    # its helpers is laid from the prelude's line, then the scripts as they ran.
+    kept = ([(Path(prelude_name or "prelude.py").name, prelude)] if prelude else []) + [
+        (Path(n).name, t) for t, n in sources]
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=EaselWarning)
         result = run_scripts(
-            target,
-            [(s.read_text(encoding="utf-8-sig"), str(s)) for s in scripts],
+            target, sources,
             prelude=prelude, prelude_name=prelude_name or "prelude.py",
         )
     # The post-pass check, beside the budget line: what the pass just laid would be
@@ -1369,6 +1423,7 @@ def _cmd_run(session: Session, args) -> int:
             # After the printing, so a file that cannot be written costs the record
             # and not the rehearsal the painter is waiting for.
             session._keep_report(target, names, before, block)
+            session.keep_pass(target, names, kept, before)
             session.save(args.session)
         else:
             failed()
@@ -1376,6 +1431,9 @@ def _cmd_run(session: Session, args) -> int:
 
     if result.code == 0:
         session._keep_report(target, names, before, block)
+        # And the pass itself, for the film, when the session captures: the scripts
+        # as they ran and the line each mark was laid from.
+        session.keep_pass(target, names, kept, before)
     if result.save:
         session.save(args.session)
     if result.code == 0:
