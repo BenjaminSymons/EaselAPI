@@ -12,8 +12,11 @@ import numpy as np
 
 __all__ = ["TEXTURES", "make_texture", "value_noise", "fbm"]
 
-#: Available canvas surfaces, in order of tooth.
-TEXTURES = ("smooth", "linen", "rough")
+#: Available canvas surfaces. The first three in order of tooth; ``cartridge`` -- a
+#: drawing paper, between ``smooth`` and ``linen`` in tooth and the graphite medium's
+#: default -- is last so that everything seeded by a texture's position in this tuple
+#: (the brush sampler's panels, the golden strips) lays what it laid before it came.
+TEXTURES = ("smooth", "linen", "rough", "cartridge")
 
 
 def value_noise(shape: tuple[int, int], cells: int, rng: np.random.Generator) -> np.ndarray:
@@ -76,7 +79,8 @@ def make_texture(
     """Build a height map for the named surface.
 
     Args:
-        name: one of :data:`TEXTURES` -- ``"smooth"``, ``"linen"`` or ``"rough"``.
+        name: one of :data:`TEXTURES` -- ``"smooth"``, ``"linen"``, ``"rough"`` or
+            ``"cartridge"``.
         height: canvas height in pixels.
         width: canvas width in pixels.
         rng: seeded generator, so the same seed gives the same weave.
@@ -116,7 +120,7 @@ def make_texture(
         h = 0.5 + weave * 0.5 + (slubs - 0.5) * 0.35
         amplitude = 0.62
 
-    else:  # rough
+    elif key == "rough":
         # Cold-press paper: pitted, with a wide range of hill sizes.
         base = fbm(shape, rng, octaves=6, base_cells=7, gain=0.55)
         pits = value_noise(shape, max(40, long_side // 7), rng)
@@ -124,6 +128,21 @@ def make_texture(
         h = np.clip(h, 0.0, 1.0)
         h = h**1.15  # bias toward valleys, so the tooth catches paint
         amplitude = 0.85
+
+    else:  # cartridge
+        # Drawing paper: an even, fine, aperiodic tooth -- no weave to print as a
+        # screen, no pits the size of a mark -- over a faint roll from the sheet. The
+        # grain is the part a pencil reads: a light line catches its high points and
+        # a heavy one fills it, which is what makes graphite look like graphite.
+        # Fine means fine: at the sizes a drawing is made at a pixel is a fifth of a
+        # millimetre, which is the grain of the paper itself, so the finest term is
+        # per pixel. Read coarser than this, a side-of-pencil mark came out as blots
+        # the size of a fingertip rather than as grain.
+        base = fbm(shape, rng, octaves=4, base_cells=8, gain=0.5)
+        grain = value_noise(shape, max(60, long_side // 3), rng)
+        fine = rng.random(shape, dtype=np.float32)
+        h = 0.5 + (base - 0.5) * 0.25 + (grain - 0.5) * 0.45 + (fine - 0.5) * 0.45
+        amplitude = 0.50
 
     h = _normalise(h)
     amp = float(np.clip(amplitude * strength, 0.0, 1.0))

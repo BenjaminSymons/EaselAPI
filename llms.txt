@@ -59,7 +59,7 @@ What to know before reading further:
   thing here.
 - Brushes: `round_soft`, `round_hard`, `liner`, `flat`, `bristle`, `knife`, `smudge`.
   Grounds: `white`, `warm_white`, `toned_grey`, `toned_warm_grey`, `burnt_sienna`,
-  `umber_wash`, `cool_grey`. Textures: `smooth`, `linen`, `rough`.
+  `umber_wash`, `cool_grey`. Textures: `smooth`, `linen`, `rough`, `cartridge`.
 - Three interfaces over one engine: the Python API, an `easel` CLI whose state is a
   single `.easel` file, and an MCP server (`pip install "easel-paint[mcp]"`, then
   `easel-mcp`) whose looking tools hand back the PNG inline rather than a path to it.

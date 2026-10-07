@@ -49,6 +49,7 @@ the two axes as a point is, so an oval in pixels is `ellipse(p, *s.px(rx, ry))`.
 |---|---|
 | `pencil`, `erase`, `mark`, `unmark` | `stroke`, `dab` |
 | `dry` | `smudge`, `glaze` — marks like any other |
+| | `line` — a stroke of the graphite medium, charged like paint. The free pencil beside it is the underdrawing, and a drawing uses both |
 | `look`, `preview`, `rehearse`, `cost`, `compare`, `prepare` | `block_in`, `sweep`, `scumble`, `cover` — **once per pass**, so one call is ten to thirty |
 | `undo` (it removes what was charged) | |
 | `sketch(reference, level=, pressure=, areas=)` — it lays pencil, and is an assisted mode the log records; `areas=` lays some of the numbered masses rather than all of them | |
@@ -79,6 +80,7 @@ returns the number, and `s.cost_line(plan)` says *why* it is that number.
 | `scumble(band, a, b, n=8)` | a soft passage, `n` passes stepping between two colours | `n` |
 | `cover(place, color)` | a repair, with every clause of the burying recipe set | one per pass |
 | `pencil(points)` | graphite under the paint. A list of points is splined, which rounds every corner and bows a closed outline outward; a shape handed over whole — a `Polygon`, a `Region`, `"D4"` — is drawn as its own outline, corners kept, and so is one handed to `guide()` | 0 |
+| `line(points, grade="HB", pressure=0.5, tip="point", width=None, smooth=None, note="")` | one stroke of the **graphite medium** — the drawing as the picture, in a channel nothing buries. See *The graphite medium* below | 1 |
 | `erase(region=None)` | takes **both** drawings out — the graphite and the `guide()` overlay | 0 |
 | `dry(amount=1.0, region=None)` | takes the wetness out so new paint covers rather than mixes | 0 |
 
@@ -384,7 +386,54 @@ under, never above.
 
 Grounds for `Session(ground=...)`: `white`, `warm_white`, `toned_grey`,
 `toned_warm_grey`, `cool_grey`, `umber_wash`, `burnt_sienna` — or any colour.
-Textures: `smooth`, `linen`, `rough`.
+Textures: `smooth`, `linen`, `rough`, and `cartridge` — a drawing paper, between
+`smooth` and `linen` in tooth and fine in grain, the default under a drawing.
+
+---
+
+## The graphite medium
+
+`Session(medium="graphite")` declares a drawing: the paper is `cartridge` unless another
+texture is named, `look()` is a values view unless `values=False`, and the file keeps the
+declaration. It refuses nothing — the paint verbs still work, and `pencil()` still lays
+its free underdrawing — because the engine refuses nothing.
+
+The drawing is made with `line()`, one stroke at a time, in a channel of its own that
+paint never buries and that is charged like paint. **The channel's unit is the value the
+view reports**: `look(values=True)` and `compare()` read a mark as the paper's value
+times what the graphite leaves, so a `6B` at its ceiling of `0.96` leaves four hundredths
+of the paper — value `0.04` on white paper, which reads `0.956` bare.
+
+| Grade | Ceiling (share of the way from paper to black) | One pass at `pressure=1.0` takes | Point width | How the point spreads under pressure |
+|---|---|---|---|---|
+| `4H` | 0.35 | 80% of what is left under the ceiling | 0.0020 | barely |
+| `2H` | 0.45 | 85% | 0.0022 | a little |
+| `HB` | 0.60 | 90% | 0.0026 | by half |
+| `2B` | 0.78 | 93% | 0.0034 | to twice its lightest |
+| `4B` | 0.88 | 95% | 0.0046 | to two and a half times |
+| `6B` | 0.96 | 97% | 0.0060 | to nearly three times |
+
+A grade **saturates toward its own ceiling**: the second pass takes the same share of
+what is left, and no number of passes of a `2H` lays a `6B`'s black. Choose the grade
+for the value a passage has to reach and the pressure for the width and the tooth. The
+measured values of each grade at three pressures and one, two and four passes are in
+`CALIBRATION.md`, *The graphite medium*.
+
+`pressure` is what every painting verb takes — a number, a named profile, a list along
+the stroke — and does three things: darkens the mark (`pressure ** gamma`, a hard grade
+staying light until leant on), pushes the lead further into the tooth (a `4H` under a
+heavy hand still catches only the high points; a `6B` under a light one fills the
+valleys), and on the `point` widens the line by as much as the grade allows.
+
+`tip="point"` is a line: a hard round mark at the grade's width. `tip="side"` is the lead
+laid over: a mark `0.024` of the long side wide, following the stroke's direction as the
+`flat` brush does, riding on the peaks of the tooth more than the point and laying less
+per pass — how a mass is laid. `width` overrides either, as a fraction of the long side.
+
+Graphite fills the tooth as it builds: where the channel is already dark a later light
+stroke lays flatter, which is what worked paper does and the only *burnish* there is in
+the first cut. `smooth` and `note` are as on `pencil()`; a shape handed over whole is
+drawn as its own outline.
 
 ---
 
@@ -662,10 +711,12 @@ an index would repaint every painting made before it.
 ## The session, and the shell
 
 ```python
-Session(width=1024, height=768, texture="linen", ground="white", seed=0,
-        timelapse=True, out_dir="out", texture_strength=1.0, budget=None)
+Session(width=1024, height=768, texture=None, ground="white", seed=0,
+        timelapse=True, out_dir="out", texture_strength=1.0, budget=None,
+        medium="paint")
                    # timelapse=<px> is the frame's long side; the default is 360.
-                   # The frames stay in memory: the .easel file keeps none
+                   # The frames stay in memory: the .easel file keeps none.
+                   # texture=None is "linen" for paint and "cartridge" for graphite
 s.size   s.aspect   s.ground   s.stroke_count   s.spent   s.remaining   s.budget_line()
 s.px(x, y)   s.px_size(r)          # a pixel as a place; a length in pixels as a size
 s.marks  s.mark(name, x, y)   s.pt(name)   s.unmark(name)

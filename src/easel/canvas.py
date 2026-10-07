@@ -23,6 +23,11 @@ Three channels beyond colour:
     paint and where the ground shows and is gone under an opaque mass. A painter
     does not start on a blank canvas, and making the underdrawing disappear is a
     large part of what painting is.
+``graphite``
+    The drawing as the picture, 0..1: how far each pixel has been taken from the
+    paper's value toward black (see :meth:`Canvas.lay_graphite`). The graphite
+    medium's own channel, beside ``sketch`` rather than in place of it -- nothing
+    buries it, it is composited last, and a mark in it is charged like paint.
 """
 
 from __future__ import annotations
@@ -158,7 +163,7 @@ def build_surface(
     # surface. One fixed fine grain for every texture made all three break up at the
     # grain's scale instead of their own -- cold-press paper stopped leaving chunky
     # islands and started speckling like cloth.
-    divisor = {"rough": 11, "linen": 3, "smooth": 4}.get(texture.lower(), 4)
+    divisor = {"rough": 11, "linen": 3, "smooth": 4, "cartridge": 2}.get(texture.lower(), 4)
     cells = max(24, max(width, height) // divisor)
     grain = value_noise((height, width), cells, rng).astype(np.float32)
     return height_map, grain
@@ -222,6 +227,22 @@ GRAPHITE = "#3A3A40"
 # a pencil is small enough that it skips whole valleys rather than half-filling them.
 _GRAPHITE_BAND = 0.13
 
+# -- the graphite medium (the ``graphite`` channel) ------------------------------------
+#: How far a lead reaches into the gating field at a bite of 0: the need the gate sets
+#: is ``(1 - bite) * _LEAD_REACH``, capped at the surface's own ceiling as every gate
+#: here is. The sketch pencil's constant (:meth:`Canvas.rub`), kept apart so the two
+#: can be tuned apart.
+_LEAD_REACH = 0.62
+#: Graphite fills the tooth: where the channel is high the valleys are full, and a
+#: later light stroke lays flatter there than on fresh paper. The gating field is read
+#: as the tooth plus this much of the graphite already there, which is the *filled*
+#: state the spec asked a flag for, held by the channel itself and so needing no plane.
+_FILLED_TOOTH = 0.30
+#: Graphite on graphite deposits less as the surface fills: a stroke's take is scaled
+#: by ``(1 - graphite) ** _BURNISH``. The one number in the medium nothing else in the
+#: engine constrains; calibrated on the value scale in ``CALIBRATION.md``.
+_BURNISH = 0.5
+
 
 class Canvas:
     """A paintable surface.
@@ -229,7 +250,8 @@ class Canvas:
     Args:
         width: pixel width.
         height: pixel height.
-        texture: surface tooth -- ``"smooth"``, ``"linen"`` or ``"rough"``.
+        texture: surface tooth -- ``"smooth"``, ``"linen"``, ``"rough"`` or
+            ``"cartridge"``.
         ground: a key of :data:`GROUNDS`, a hex string, or an (r, g, b) tuple.
         seed: fixes the texture weave; the same seed gives the same surface.
         texture_strength: scales the tooth. 0 is a perfectly flat surface.
@@ -288,6 +310,10 @@ class Canvas:
         # that never draws: `stamp` is the hot loop and it is called millions of times.
         self.sketch = np.zeros((self.height, self.width), dtype=np.float32)
         self.has_sketch = False
+        # The graphite medium's own channel, with the same flag for the same reason:
+        # a painting that never draws in graphite composites as it always did.
+        self.graphite = np.zeros((self.height, self.width), dtype=np.float32)
+        self.has_graphite = False
         self.stroke_count = 0
 
     # -- coordinates -----------------------------------------------------------------
@@ -757,6 +783,91 @@ class Canvas:
             self.sketch[mask] = 0.0
         self.has_sketch = bool(self.sketch.any())
 
+    # -- the graphite medium ---------------------------------------------------------
+    def bite_graphite(self, cx: float, cy: float, mask: np.ndarray, strength: float,
+                      bite: float, field: np.ndarray, origin: tuple[int, int]) -> None:
+        """One dab of a graphite stroke, into the stroke's own field as a maximum.
+
+        The medium's deposit is made in two steps, and this is the first. A stroke
+        accumulates **within itself** as a maximum -- its dabs overlap almost
+        completely, and any additive rule turns a line into a bar within a few dabs
+        (``LESSONS.md``) -- so each dab writes ``max(field, mask * gate * strength)``
+        into ``field``, an array over the stroke's box, and nothing onto the canvas.
+        :meth:`lay_graphite` then lays the whole field once.
+
+        The gate is the sketch pencil's (:meth:`rub`), with two differences. ``bite``
+        is the grade's and the tip's rather than the pressure alone, so a hard lead
+        speckles under a heavy hand and a soft one fills under a light one; and the
+        tooth is read with the graphite already there added to it
+        (:data:`_FILLED_TOOTH`), so where the valleys are full a light stroke lays
+        flatter, as it does on paper that has been worked.
+
+        Args:
+            cx, cy: centre in pixel coordinates.
+            mask: the tip stamp.
+            strength: how dark this dab asks to be, 0..1 -- the grade's reading of
+                the pressure.
+            bite: how far into the tooth the lead reaches, 0..1.
+            field: the stroke's field, ``float32`` over the box ``origin`` names.
+            origin: the canvas pixel the field's ``[0, 0]`` sits at, ``(x0, y0)``.
+        """
+        n = mask.shape[0]
+        r = n // 2
+        ix, iy = int(round(cx)), int(round(cy))
+        x0, y0 = ix - r, iy - r
+        sx0, sy0 = max(0, -x0), max(0, -y0)
+        cx0, cy0 = max(0, x0), max(0, y0)
+        cx1, cy1 = min(self.width, x0 + n), min(self.height, y0 + n)
+        if cx1 <= cx0 or cy1 <= cy0:
+            return
+        sub = mask[sy0 : sy0 + (cy1 - cy0), sx0 : sx0 + (cx1 - cx0)]
+
+        tooth = (self.height_map[cy0:cy1, cx0:cx1] * _TOOTH_HEIGHT_W
+                 + self.grain[cy0:cy1, cx0:cx1] * _TOOTH_GRAIN_W)
+        if self.has_graphite:
+            tooth = tooth + self.graphite[cy0:cy1, cx0:cx1] * _FILLED_TOOTH
+        need = min((1.0 - float(np.clip(bite, 0.0, 1.0))) * _LEAD_REACH, self.tooth_ceiling)
+        gate = np.clip((tooth - need) / _GRAPHITE_BAND, 0.0, 1.0)
+        gate = gate * gate * (3.0 - 2.0 * gate)
+
+        fx0, fy0 = cx0 - origin[0], cy0 - origin[1]
+        window = field[fy0:fy0 + (cy1 - cy0), fx0:fx0 + (cx1 - cx0)]
+        np.maximum(window, sub * gate * float(np.clip(strength, 0.0, 1.0)), out=window)
+
+    def lay_graphite(self, field: np.ndarray, origin: tuple[int, int], rate: float,
+                     ceiling: float) -> float:
+        """Lay one stroke's field onto the ``graphite`` channel. The second step.
+
+        **The channel's unit is the value the view reports**: ``graphite`` is how far a
+        pixel has been taken from the paper toward black, so that the paper's value
+        times ``1 - graphite`` is what :meth:`values`, ``look(values=True)`` and
+        ``compare()`` read back -- the composite converts to do it
+        (:meth:`composite`). A grade's ``ceiling`` is therefore the share of the way
+        from paper to black it can reach, and the number a painter plans with.
+
+        Strokes combine additively with saturation toward that ceiling: a stroke whose
+        field is ``f`` takes ``1 - exp(-rate * f)`` of what is left under the ceiling,
+        less as the surface fills (:data:`_BURNISH`). So one full-pressure pass lays
+        most of what the grade can, the second lays most of the rest, and no number of
+        passes of a 2H reaches a 6B's black -- which is the whole of what a grade is.
+
+        Returns:
+            How much graphite landed, as the sum of the deposit over the field.
+        """
+        x0, y0 = origin
+        h, w = field.shape
+        before = self.graphite[y0:y0 + h, x0:x0 + w]
+        room = np.clip(float(ceiling) - before, 0.0, 1.0)
+        take = (1.0 - np.exp(-float(rate) * field)) * room
+        if _BURNISH > 0.0:
+            take = take * np.clip(1.0 - before, 0.0, 1.0) ** _BURNISH
+        landed = float(take.sum())
+        np.add(before, take, out=before)
+        np.clip(before, 0.0, 1.0, out=before)
+        if landed > 0.0:
+            self.has_graphite = True
+        return landed
+
     def wetness_at(self, cx: float, cy: float) -> float:
         """Wetness at one point, in pixel coordinates. Cheap: no window average."""
         ix, iy = int(round(cx)), int(round(cy))
@@ -833,6 +944,14 @@ class Canvas:
             # after the relief: pencil adds no height, so it must not be embossed.
             g = self.sketch[..., None]
             rgb = rgb * (1.0 - g) + _graphite_linear() * g
+        if self.has_graphite:
+            # The drawing, last of all, and in the unit it is defined in: the channel
+            # is darkness in *value*, so the surface is taken to sRGB, each channel
+            # scaled by what the graphite leaves, and brought back. A linear multiply
+            # would leave a 6B at 0.96 reading 0.21 rather than 0.04 -- the last time
+            # a linear number stood beside an sRGB view is in ``LESSONS.md``.
+            left = 1.0 - self.graphite[..., None]
+            rgb = srgb_to_linear(linear_to_srgb(rgb) * left)
         return rgb
 
     def to_srgb8(self, impasto: bool = True, sketch: bool = True) -> np.ndarray:
@@ -881,7 +1000,8 @@ class Canvas:
         return (linear_to_srgb(lum) * 255.0 + 0.5).astype(np.uint8)
 
     # -- state -----------------------------------------------------------------------
-    def snapshot(self, box: tuple[int, int, int, int] | None = None) -> dict:
+    def snapshot(self, box: tuple[int, int, int, int] | None = None,
+                 graphite_only: bool = False) -> dict:
         """A copy of every mutable channel, for undo -- of all of it, or of one box.
 
         A mark touches a few percent of a canvas and the undo stack used to keep
@@ -892,7 +1012,20 @@ class Canvas:
         stack is then unwound newest first -- see
         :meth:`easel.history.History.pop_snapshots` -- because a box holds the state
         before *its own* mark and nothing about the marks laid after it.
+
+        ``graphite_only`` is a graphite mark's snapshot: the one channel it can touch,
+        over its box, and nothing else -- not the whole wetness plane every paint mark
+        keeps, because a graphite mark dries nothing. A 400-mark drawing would
+        otherwise hold twenty-four spare wetness planes for no mark that moved one.
         """
+        if graphite_only:
+            x0, y0, x1, y1 = box if box is not None else (0, 0, self.width, self.height)
+            return {
+                "box": (int(x0), int(y0), int(x1), int(y1)),
+                "graphite": (self.graphite[y0:y1, x0:x1].copy() if self.has_graphite
+                             else None),
+                "stroke_count": np.int64(self.stroke_count),
+            }
         if box is None:
             return {
                 "rgb": self.rgb.copy(),
@@ -904,6 +1037,11 @@ class Canvas:
                 # alone" -- and it keeps a painting that never draws from carrying
                 # twenty-four spare colour planes around in its undo stack.
                 "sketch": self.sketch.copy() if self.has_sketch else None,
+                # Nothing but a graphite mark changes this channel, and such a mark
+                # takes the snapshot above; here it is kept only for the verbs that
+                # reach the whole canvas (``erase`` and ``dry`` copy the lot) so that
+                # a stack mixing the two unwinds to the same picture.
+                "graphite": self.graphite.copy() if self.has_graphite else None,
                 "stroke_count": np.int64(self.stroke_count),
             }
         x0, y0, x1, y1 = box
@@ -921,17 +1059,31 @@ class Canvas:
         }
 
     def restore(self, snap: dict) -> None:
-        """Restore a snapshot taken by :meth:`snapshot`, whole or by its box."""
+        """Restore a snapshot taken by :meth:`snapshot`, whole or by its box.
+
+        Each channel is put back only where the snapshot holds it: a graphite mark's
+        snapshot holds its box of ``graphite`` and nothing else, a paint mark's holds
+        every paint channel and no graphite, and a whole-canvas one holds the lot.
+        """
         box = snap.get("box")
         if box is not None:
             x0, y0, x1, y1 = box
-            self.rgb[y0:y1, x0:x1] = snap["rgb"]
-            self.thickness[y0:y1, x0:x1] = snap["thickness"]
-            self.wetness = np.array(snap["wetness"], dtype=np.float32, copy=True)
+            if "rgb" in snap:
+                self.rgb[y0:y1, x0:x1] = snap["rgb"]
+                self.thickness[y0:y1, x0:x1] = snap["thickness"]
+                self.wetness = np.array(snap["wetness"], dtype=np.float32, copy=True)
             stored = snap.get("sketch")
             if stored is not None:
                 self.sketch[y0:y1, x0:x1] = stored
                 self.has_sketch = True
+            if "graphite" in snap:
+                stored = snap["graphite"]
+                if stored is None:
+                    self.graphite[y0:y1, x0:x1] = 0.0
+                    self.has_graphite = bool(self.graphite.any())
+                else:
+                    self.graphite[y0:y1, x0:x1] = stored
+                    self.has_graphite = True
             self.stroke_count = int(snap["stroke_count"])
             return
         self.rgb = np.array(snap["rgb"], dtype=np.float32, copy=True)
@@ -945,6 +1097,14 @@ class Canvas:
             else:
                 self.sketch = np.array(stored, dtype=np.float32, copy=True)
                 self.has_sketch = True
+        if "graphite" in snap:
+            stored = snap["graphite"]
+            if stored is None:
+                self.graphite[:] = 0.0
+                self.has_graphite = False
+            else:
+                self.graphite = np.array(stored, dtype=np.float32, copy=True)
+                self.has_graphite = True
         self.stroke_count = int(snap["stroke_count"])
 
     def trial_copy(self) -> Canvas:
@@ -965,6 +1125,7 @@ class Canvas:
         c.wetness = self.wetness.copy()
         c.thickness = self.thickness.copy()
         c.sketch = self.sketch.copy()
+        c.graphite = self.graphite.copy()
         return c
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid

@@ -37,7 +37,27 @@ what was done about them in [`SUGGESTIONS.md`](SUGGESTIONS.md), and the method i
 
 ## [Unreleased]
 
-Nothing yet.
+**The graphite medium, step 2 of `SPEC.md`: the channel and the stroke.** Added beside
+the paint and never through it — every stored golden but the sampler's is unchanged,
+and the sampler's moved only because it gained a paper.
+
+- `Session(medium="graphite")`, a declaration saved with the file: the paper defaults
+  to `cartridge`, `look()` to a values view. Nothing is refused.
+- `Canvas.graphite`, a channel beside `sketch`: the drawing as the picture, composited
+  last and buried by nothing, in **value** units — the paper's value times what the
+  graphite leaves is what `look(values=True)` and `compare()` read. Saved only when
+  drawn in, and read with `.get`, so every older file opens unchanged.
+- `s.line(points, grade, pressure, tip, width)`: one stroke of graphite, charged like a
+  stroke of paint, kind `graphite` in the log. Six grades, `4H` to `6B`, each saturating
+  toward its own ceiling; two tips, `point` and `side`; pressure to darkness, to tooth
+  and, on the point, to width. A stroke accumulates within itself as a maximum and
+  strokes add with saturation, which is the rule `LESSONS.md` keeps. Undo by box, of
+  the one channel the mark touches; replay exact.
+- `cartridge`, a fourth texture: drawing paper, fine aperiodic grain, between `smooth`
+  and `linen` in tooth. Last in `TEXTURES` so every seeded sampler cell stays where it was.
+- `samples/pencils.png` and `scripts/make_pencil_sampler.py`, the medium's sampler;
+  `scripts/probe_graphite_scale.py`, its value scale; two golden cases, `graphite` and
+  `pencils`.
 
 ## [0.8.0] — 2026-10-01
 

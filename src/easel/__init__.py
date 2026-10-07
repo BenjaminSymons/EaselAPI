@@ -41,6 +41,7 @@ from easel.color import (
     parse_color,
     srgb_to_linear,
 )
+from easel.graphite import GRADES, GRAPHITE_TIPS, Grade
 from easel.history import History, StrokeRecord
 from easel.letters import LETTERS, letter_paths
 from easel.look import load_reference, render_look
@@ -80,6 +81,7 @@ from easel.session import Session
 from easel.stroke import (
     PRESSURE_PROFILES,
     catmull_rom,
+    draw_graphite,
     draw_pencil,
     paint_stroke,
     pressure_curve,
@@ -106,6 +108,11 @@ __all__ = [
     "TIPS",
     "paint_stroke",
     "draw_pencil",
+    # the graphite medium
+    "draw_graphite",
+    "Grade",
+    "GRADES",
+    "GRAPHITE_TIPS",
     "PRESSURE_PROFILES",
     "pressure_curve",
     "catmull_rom",

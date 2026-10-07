@@ -23,9 +23,10 @@ import numpy as np
 from easel.brush import Brush, bristle_shares, tip_mask
 from easel.canvas import Canvas, DryComb
 from easel.color import mix_many, parse_color
+from easel.graphite import Grade, get_grade, tip_brush
 
-__all__ = ["PRESSURE_PROFILES", "StrokeResult", "paint_stroke", "draw_pencil", "catmull_rom",
-           "pressure_curve", "press_width", "drags"]
+__all__ = ["PRESSURE_PROFILES", "StrokeResult", "paint_stroke", "draw_pencil", "draw_graphite",
+           "catmull_rom", "pressure_curve", "press_width", "drags"]
 
 #: Named pressure profiles. Anything else can be given as a scalar or a list.
 PRESSURE_PROFILES = ("taper", "press_in", "lift_off", "even", "swell", "dab")
@@ -630,6 +631,146 @@ def draw_pencil(
         return StrokeResult(0, 0.0, 1.0, (0.0, 0.0, 0.0, 0.0))
     return StrokeResult(
         dabs=n,
+        length_px=float(dists[-1]) if len(dists) else 0.0,
+        end_load=1.0,
+        bounds=(
+            float(np.clip(min_x, 0.0, 1.0)),
+            float(np.clip(min_y, 0.0, 1.0)),
+            float(np.clip(max_x, 0.0, 1.0)),
+            float(np.clip(max_y, 0.0, 1.0)),
+        ),
+        paint=float(landed),
+    )
+
+
+# --------------------------------------------------------------------------------------
+# The graphite medium
+# --------------------------------------------------------------------------------------
+#: How much a hand's pressure wanders along a graphite stroke, as a share of itself,
+#: and how far the point drifts off its path as a share of its radius. Both small on
+#: purpose, as the sketch pencil's are: enough that a line lives, not so much that it
+#: reads as a different line. The side's drift is a share of its width, and smaller --
+#: a lead laid over is steadied by the paper.
+_GRAPHITE_PRESS_WANDER = 0.12
+_GRAPHITE_POINT_DRIFT = 0.30
+_GRAPHITE_SIDE_DRIFT = 0.03
+
+
+def draw_graphite(
+    canvas: Canvas,
+    points,
+    grade: str | Grade = "HB",
+    pressure="taper",
+    tip: str = "point",
+    width: float | None = None,
+    rng: np.random.Generator | None = None,
+    smooth: bool = True,
+    dry_run: bool = False,
+) -> StrokeResult:
+    """Draw one stroke of graphite into the canvas's ``graphite`` channel.
+
+    The medium's primitive, beside :func:`draw_pencil` and never through it: the pencil
+    lays a free underdrawing in ``sketch`` that paint buries, and this lays the drawing
+    itself, in a channel nothing buries, charged like paint. Built on the stroke
+    machinery -- :func:`_dabs` for the spacing along travel, :func:`pressure_curve` for
+    the profile, the cached and rotated tip masks -- and on two canvas methods: the
+    stroke's dabs are gathered into one field as a maximum
+    (:meth:`Canvas.bite_graphite <easel.canvas.Canvas.bite_graphite>`), and the field
+    is laid once, saturating toward the grade's ceiling
+    (:meth:`Canvas.lay_graphite <easel.canvas.Canvas.lay_graphite>`).
+
+    Args:
+        canvas: the surface to draw on.
+        points: normalised (x, y) points. One point makes a tick.
+        grade: a name from the box -- ``"4H"`` to ``"6B"`` -- or a :class:`Grade`.
+        pressure: a named profile, a scalar, or a list along the stroke, as a paint
+            stroke takes it. On the ``point`` the width follows it as well as the
+            darkness, by as much as the grade allows; the ``side`` keeps its width.
+        tip: ``"point"`` or ``"side"`` -- the lead's point, or the lead laid over for
+            a broad, toothy mark.
+        width: the mark's width as a fraction of the canvas long side. Left off, the
+            grade's own for the point and :data:`easel.graphite.SIDE_WIDTH` for the side.
+        rng: seeded generator, for the hand's wander.
+        smooth: fit a spline through the points.
+        dry_run: work the stroke out and lay none of it, as :func:`paint_stroke` does
+            for a counted rehearsal.
+
+    Returns:
+        A :class:`StrokeResult` whose ``paint`` is how much graphite landed.
+    """
+    rng = rng if rng is not None else np.random.default_rng(0)
+    g = get_grade(grade)
+    b = tip_brush(g, tip, width)
+    pts = np.atleast_2d(np.asarray(points, dtype=np.float32))
+    if pts.shape[1] != 2:
+        raise ValueError(f"Points must be (n, 2) normalised coordinates, got shape {pts.shape}")
+    if not np.isfinite(pts).all():
+        raise ValueError(f"Points must be finite numbers, got {points!r}")
+
+    pos, angles, dists, diameter = _dabs(canvas, pts, b, smooth)
+    n = len(pos)
+    radius = diameter * 0.5
+    profile = pressure_curve(pressure, n)
+    point = tip == "point"
+
+    # The hand: a little wander in the pressure, a little drift off the line. Drawn
+    # once, up front, so the stroke is reproducible from its seed.
+    press = np.clip(profile * (1.0 + _wander(rng, n, 1)[:, 0] * _GRAPHITE_PRESS_WANDER),
+                    0.0, 1.0)
+    drift = _wander(rng, n, 2) * (radius * _GRAPHITE_POINT_DRIFT if point
+                                  else diameter * _GRAPHITE_SIDE_DRIFT)
+
+    # The radius each dab is stamped at: the point spreads under pressure by as much
+    # as the grade lets it, the side is the chisel it is.
+    if point:
+        radii = np.maximum(radius * (g.width_floor + (1.0 - g.width_floor) * press),
+                           _MIN_PRESS_RADIUS_PX)
+    else:
+        radii = np.full(n, radius, dtype=np.float32)
+
+    # The stroke's reach, for the field it is gathered in: the widest dab's stamp
+    # (a side mask is built on the whole diameter, whichever way it turns) plus a
+    # margin for rounding. Clipped to the canvas.
+    reach = int(math.ceil(float(radii.max()) * (1.0 if point else 1.0) + 2.0)) + 1
+    xs = pos[:, 0] + drift[:, 0]
+    ys = pos[:, 1] + drift[:, 1]
+    x0 = int(np.clip(np.floor(xs.min()) - reach, 0, canvas.width))
+    x1 = int(np.clip(np.ceil(xs.max()) + reach + 1, 0, canvas.width))
+    y0 = int(np.clip(np.floor(ys.min()) - reach, 0, canvas.height))
+    y1 = int(np.clip(np.ceil(ys.max()) + reach + 1, 0, canvas.height))
+    if x1 <= x0 or y1 <= y0:
+        return StrokeResult(0, 0.0, 1.0, (0.0, 0.0, 0.0, 0.0))
+    field = None if dry_run else np.zeros((y1 - y0, x1 - x0), dtype=np.float32)
+
+    min_x = min_y = 1.0
+    max_x = max_y = 0.0
+    stamped = 0
+    for i in range(n):
+        cx, cy, r = float(xs[i]), float(ys[i]), float(radii[i])
+        if r < 0.6:
+            continue
+        stamped += 1
+        nx, ny = cx / max(canvas.width - 1, 1), cy / max(canvas.height - 1, 1)
+        rnx, rny = r / max(canvas.width - 1, 1), r / max(canvas.height - 1, 1)
+        min_x, max_x = min(min_x, nx - rnx), max(max_x, nx + rnx)
+        min_y, max_y = min(min_y, ny - rny), max(max_y, ny + rny)
+        if field is None:
+            continue
+        # The mask's sub-pixel phase is measured against the floored centre, so the
+        # centre handed to the canvas is that same floored value (see draw_pencil).
+        ix, iy = math.floor(cx), math.floor(cy)
+        mask = b.mask(r, float(angles[i]), cx - ix, cy - iy)
+        canvas.bite_graphite(float(ix), float(iy), mask, g.strength(float(press[i])),
+                             g.bite_at(float(press[i]), tip), field, (x0, y0))
+
+    landed = 0.0
+    if field is not None and stamped:
+        landed = canvas.lay_graphite(field, (x0, y0), g.rate_for(tip), g.ceiling)
+
+    if stamped == 0:
+        return StrokeResult(0, 0.0, 1.0, (0.0, 0.0, 0.0, 0.0))
+    return StrokeResult(
+        dabs=stamped,
         length_px=float(dists[-1]) if len(dists) else 0.0,
         end_load=1.0,
         bounds=(

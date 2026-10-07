@@ -24,6 +24,8 @@ samples/*.gif
 # at-a-glance description, so it is committed even though it is generated.
 !samples/brushes.png
 !samples/shapes.png
+# And the graphite medium's own sampler, for the same reason.
+!samples/pencils.png
 
 # Editors / OS
 .vscode/

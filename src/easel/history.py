@@ -44,7 +44,7 @@ class StrokeRecord:
     """One entry in the painting log. Enough to replay the stroke exactly."""
 
     index: int
-    kind: str  # "stroke", "dry", "glaze", "smudge", "pencil", "erase"
+    kind: str  # "stroke", "dry", "glaze", "smudge", "pencil", "erase", "graphite"
     brush: str = ""
     color_hex: str = ""
     points: list = field(default_factory=list)
@@ -178,12 +178,14 @@ class History:
                 bits.append(str(named or r.color_hex))
             if r.dabs:
                 bits.append(f"{r.dabs} dabs")
-            if r.kind not in History.UNPAINTED_KINDS and r.dabs:
+            if r.kind in ("pencil", "graphite") and r.dabs:
+                # A graphite mark is charged and the pencil is not, and both lay
+                # graphite rather than paint.
+                bits.append("NOTHING DREW" if r.paint < 1.0 else f"{_short(r.paint)} graphite")
+            elif r.kind not in History.UNPAINTED_KINDS and r.dabs:
                 # Say it plainly when a mark laid no paint: the painter is looking
                 # at the log precisely because the canvas did not change.
                 bits.append("NO PAINT LANDED" if r.paint < 1.0 else f"{_short(r.paint)} paint")
-            elif r.kind == "pencil":
-                bits.append("NOTHING DREW" if r.paint < 1.0 else f"{_short(r.paint)} graphite")
             if r.note:
                 bits.append(f"-- {r.note}")
             lines.append(" ".join(bits))

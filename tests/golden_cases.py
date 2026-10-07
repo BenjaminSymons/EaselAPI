@@ -272,6 +272,64 @@ def build_edges() -> np.ndarray:
     return s.canvas.to_srgb8()
 
 
+def draw_graphite_marks(s: Session) -> None:
+    """The graphite medium: every grade, both tips, pressure, layering and the
+    eraser-free contract -- the pencil's free envelope under a charged drawing.
+
+    On cartridge, the medium's own paper. A point line per grade at one pressure, so
+    the six ceilings sit side by side; one line at three pressures, so width and
+    darkness both follow the hand; a side mark; a side mark laid over three times, so
+    saturation toward the ceiling is in the image; a crossed hatch, so strokes adding
+    is; a sketch pencil line underneath it all, so the two channels composite together
+    the way they always will. If any of those change, this case changes with it.
+    """
+    s.pencil([(0.05, 0.95), (0.50, 0.80), (0.95, 0.95)], pressure=0.6)
+    for i, grade in enumerate(("4H", "2H", "HB", "2B", "4B", "6B")):
+        y = 0.08 + i * 0.07
+        s.line([(0.05, y), (0.30, y - 0.02), (0.45, y + 0.02)], grade, pressure=0.7)
+    for i, press in enumerate((0.25, 0.5, 1.0)):
+        y = 0.56 + i * 0.07
+        s.line([(0.05, y), (0.25, y - 0.02), (0.45, y + 0.01)], "2B", pressure=press)
+    s.line([(0.55, 0.10), (0.75, 0.06), (0.95, 0.12)], "HB", pressure=0.5, tip="side")
+    for k in range(3):
+        s.line([(0.55, 0.26 + k * 0.012), (0.95, 0.24 + k * 0.012)], "4B", pressure=0.6,
+               tip="side", smooth=False)
+    for k in range(7):
+        t = 0.42 + k * 0.06
+        s.line([(0.56, t + 0.03), (0.94, t - 0.03)], "HB", pressure=0.6, smooth=False)
+    for k in range(7):
+        x = 0.70 + k * 0.04
+        s.line([(x - 0.02, 0.40), (x + 0.02, 0.84)], "HB", pressure=0.6, smooth=False)
+    s.line([(0.55, 0.92), (0.95, 0.90)], "6B", pressure="taper", tip="side")
+
+
+def build_graphite() -> np.ndarray:
+    """The graphite medium, on cartridge. Returns 8-bit sRGB."""
+    w, h = GOLDEN_SIZE
+    s = Session(w, h, texture="cartridge", ground="white", seed=13, timelapse=False,
+                medium="graphite")
+    draw_graphite_marks(s)
+    return s.canvas.to_srgb8()
+
+
+def build_pencils() -> np.ndarray:
+    """Every panel of ``samples/pencils.png``, stacked, as one array -- the medium's
+    sampler, hashed the way the brush sampler is, without its labels."""
+    sampler = _load_pencil_sampler_module()
+    panels = [sampler.build_panel_array(texture, sampler.panel_seed(texture))
+              for texture in sampler.PAPERS]
+    return np.concatenate(panels, axis=0)
+
+
+def _load_pencil_sampler_module():
+    """Import ``scripts/make_pencil_sampler.py`` as a module, without running main()."""
+    path = _REPO / "scripts" / "make_pencil_sampler.py"
+    spec = importlib.util.spec_from_file_location("_easel_pencil_sampler", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def build_sampler() -> np.ndarray:
     """Every painted cell of ``samples/brushes.png``, stacked, as one array.
 
@@ -309,15 +367,19 @@ CASES["drawing"] = build_drawing
 CASES["shapes"] = build_shapes
 CASES["sweep"] = build_sweep
 CASES["edges"] = build_edges
+CASES["graphite"] = build_graphite
 CASES["sampler"] = build_sampler
+CASES["pencils"] = build_pencils
 
-#: Cases stored as a hash only. The sampler is 190x19440 as one strip and a
+#: Cases stored as a hash only. The sampler is 190x30240 as one strip and a
 #: near-duplicate of ``samples/brushes.png``, which is already committed and is
-#: the sheet a human is meant to look at.
-HASH_ONLY = frozenset({"sampler"})
+#: the sheet a human is meant to look at; the pencil sampler is the same for
+#: ``samples/pencils.png``.
+HASH_ONLY = frozenset({"sampler", "pencils"})
 
 #: What to open when a case fails, per case.
-LOOK_AT = {"sampler": _REPO / "samples" / "brushes.png"}
+LOOK_AT = {"sampler": _REPO / "samples" / "brushes.png",
+           "pencils": _REPO / "samples" / "pencils.png"}
 
 
 def build(name: str) -> np.ndarray:
@@ -358,7 +420,7 @@ TOLERANCE_FRACTION = 0.02
 #: keep a second full-resolution reference image in the repo for. Averaging a
 #: block dilutes an isolated +-1 pixel into a fraction of a level, so it survives
 #: the same noise a raw per-pixel comparison does not.
-POOL_BLOCK: dict[str, tuple[int, int]] = {"sampler": (12, 5)}
+POOL_BLOCK: dict[str, tuple[int, int]] = {"sampler": (12, 5), "pencils": (12, 5)}
 
 
 def pool_average(arr: np.ndarray, block: tuple[int, int]) -> np.ndarray:

@@ -40,6 +40,7 @@ from easel.color import (
     parse_color,
     srgb_to_linear,
 )
+from easel.graphite import get_grade, tip_brush
 from easel.history import DEFAULT_FRAME_PX, History, StrokeRecord
 from easel.look import (
     DEFAULT_LOOK_SIZE,
@@ -79,6 +80,7 @@ from easel.regions import (
 )
 from easel.stroke import (
     catmull_rom,
+    draw_graphite,
     draw_pencil,
     paint_stroke,
     press_width,
@@ -99,6 +101,10 @@ __all__ = ["Session"]
 #: it simply cannot have its stream restored, and ``undo`` says so.
 _EASEL_FORMAT = 4
 _READABLE_FORMATS = (1, 2, 3, 4)
+
+#: What a picture can be made of. ``Session(medium=)`` declares it and the file keeps
+#: it; a file saved before the word existed is a painting. See :class:`Session`.
+MEDIA = ("paint", "graphite")
 
 #: The width of a smudge, as a fraction of the canvas long side, when the painter
 #: does not name one. The knee of the measured curve in :meth:`Session.smudge`: the
@@ -169,7 +175,8 @@ class Session:
     Args:
         width: canvas width in pixels.
         height: canvas height in pixels.
-        texture: ``"smooth"``, ``"linen"`` or ``"rough"``.
+        texture: ``"smooth"``, ``"linen"``, ``"rough"`` or ``"cartridge"``. Left off,
+            ``"linen"`` for a painting and ``"cartridge"`` for a drawing.
         ground: a named ground, a hex colour, or an (r, g, b) tuple.
         seed: the determinism seed. The same seed and the same calls give the same
             painting, down to the pixel.
@@ -191,6 +198,14 @@ class Session:
             out -- the budget is a plan, not a lock -- but :meth:`cost` says when a
             call would eat a large share of what is left, and ``easel run`` prints
             spent and remaining after every pass.
+        medium: ``"paint"`` or ``"graphite"``. A declaration, like the budget: what
+            this picture is made of. ``"graphite"`` picks the drawing paper when no
+            texture is named, makes :meth:`look` a values view unless asked
+            otherwise, and is saved with the file. It refuses nothing -- a drawing
+            may still ``pencil()`` its free envelope, and the paint verbs still
+            work -- because the engine refuses nothing (``REFERENCE.md``: *the budget
+            is a plan, not a lock*). The marks of the medium are :meth:`line` and the
+            helpers built on it.
 
     Example::
 
@@ -204,14 +219,23 @@ class Session:
         self,
         width: int = 1024,
         height: int = 768,
-        texture: str = "linen",
+        texture: str | None = None,
         ground: str = "white",
         seed: int = 0,
         timelapse: bool | int = True,
         out_dir: str | Path = "out",
         texture_strength: float = 1.0,
         budget: int | None = None,
+        medium: str = "paint",
     ) -> None:
+        if medium not in MEDIA:
+            raise ValueError(
+                f"Unknown medium {medium!r}. Choose one of: {', '.join(MEDIA)}."
+            )
+        #: What the picture is made of, ``"paint"`` or ``"graphite"``. See the class.
+        self.medium = str(medium)
+        if texture is None:
+            texture = "cartridge" if self.medium == "graphite" else "linen"
         self.seed = int(seed)
         self.rng = np.random.default_rng(self.seed)
         self.canvas = Canvas(width, height, texture, ground, seed, texture_strength)
@@ -2190,6 +2214,109 @@ class Session:
                 lines = [] if place is None else _erase_from_lines(lines, place)
         return lines
 
+    # -- the graphite medium ----------------------------------------------------
+    def line(
+        self,
+        points,
+        grade: str = "HB",
+        pressure=0.5,
+        tip: str = "point",
+        width: float | None = None,
+        smooth: bool | None = None,
+        note: str = "",
+    ) -> StrokeRecord:
+        """Draw one stroke of graphite: the mark of the graphite medium. Charged.
+
+        The primitive every drawing helper is built from, and the one kind of record
+        they all leave, so that replay and the film see one kind of mark. Not the
+        :meth:`pencil`: that lays a free underdrawing in the ``sketch`` channel that
+        paint buries, and this lays the picture itself, in the ``graphite`` channel
+        that nothing buries, against the budget like a stroke of paint. A drawing
+        gets both -- envelope in pencil, picture in line.
+
+        The channel is darkness in **value**: ``look(values=True)`` and ``compare()``
+        read a 6B's ceiling of ``0.96`` as four hundredths of the paper's value left,
+        which is what the grade table in ``REFERENCE.md`` promises. A grade saturates
+        toward its own ceiling, so no number of passes of a 2H lays a 6B's black --
+        choose the grade for the value, and the pressure for the width and the tooth.
+
+        Args:
+            points: normalised (x, y) points -- one point makes a tick -- or a shape,
+                drawn as its own closed outline with its corners where they are, as
+                :meth:`pencil` takes one.
+            grade: a pencil from the box, ``"4H"`` to ``"6B"``. ``"HB"`` left off.
+            pressure: a number, a named profile (``"taper"``, ``"press_in"``...) or a
+                list along the stroke, as every painting verb takes it. Heavier is
+                darker and reaches further into the tooth; on the ``point`` it is
+                wider too, by as much as the grade allows.
+            tip: ``"point"``, the lead's point, for a line; or ``"side"``, the lead
+                laid over, for a broad toothy mark four to eight points wide, following
+                the stroke's direction -- how a mass is laid.
+            width: the mark's width as a fraction of the canvas long side. Left off,
+                the grade's own line width for the point and one width for the side.
+            smooth: fit a spline through the points. Left out, a list of points is
+                splined and a shape is not, as the pencil does.
+            note: recorded in the log.
+
+        Example::
+
+            s.line([(0.2, 0.3), (0.5, 0.28), (0.8, 0.35)], "2H", pressure=0.3)
+            s.line(cell("D5"), "2B", pressure="taper", tip="side")
+        """
+        g = get_grade(grade)
+        b = tip_brush(g, tip, width)
+        outline = _outline_of(points, "line")
+        if outline is not None:
+            points = outline
+        if smooth is None:
+            smooth = outline is None
+        # Of the box this mark can reach and of the one channel it can touch: the
+        # carrier brush knows its width and that it never jitters, and the hand's
+        # drift is well inside the reach a paint mark is allowed.
+        box = None if self._counting else _stroke_box(self.canvas, points, b, smooth)
+        self._snapshot(box, graphite_only=True)
+        try:
+            index = self._index_base + len(self.history.records)
+            pts = np.atleast_2d(np.asarray(points, dtype=np.float32))
+            result = draw_graphite(
+                self.canvas, pts, grade=g, pressure=pressure, tip=tip, width=b.size,
+                rng=self._stroke_rng(index), smooth=smooth, dry_run=self._counting,
+            )
+            if box is not None and not _within(result.bounds, box, self.canvas):
+                self.history.invalidate_snapshots()
+            record = self.history.add(
+                StrokeRecord(
+                    index=index,
+                    kind="graphite",
+                    brush=g.name,
+                    points=[[float(x), float(y)] for x, y in pts],
+                    pressure=pressure if isinstance(pressure, str) else _plain(pressure),
+                    dabs=result.dabs,
+                    paint=result.paint,
+                    note=note,
+                    # `size` beside `width`, the same number: the check's rules read a
+                    # mark's width off `size`, as every paint record carries it.
+                    params={"grade": g.name, "tip": tip, "width": float(b.size),
+                            "size": float(b.size), "smooth": bool(smooth),
+                            "rng": self._stream_state(),
+                            **({"via": self._call_verb} if self._call_verb else {}),
+                            **({"boxed": True} if self._call_boxed else {}),
+                            **({"mass": self._call_mass}
+                               if self._call_mass is not None else {})},
+                )
+            )
+            self._call_mass = None
+        except Exception:
+            # As stroke(): a failure after the snapshot must not leave it orphaned
+            # against the wrong record.
+            self.history.discard_snapshot()
+            raise
+        site = self._call_site if self._stream_mark is not None else _painter_site()
+        if site is not None:
+            self._sites[record.index] = site
+        self._auto_frame()
+        return record
+
     # -- landmarks --------------------------------------------------------------
     def mark(self, name: str, x: float, y: float) -> tuple[float, float]:
         """Record a named point, and show it on every look from now on.
@@ -2493,7 +2620,7 @@ class Session:
         self,
         scale: int | None = DEFAULT_LOOK_SIZE,
         grid: bool | str = False,
-        values: bool = False,
+        values: bool | None = None,
         region=None,
         reference: str | Path | Image.Image | None = None,
         diff: bool = False,
@@ -2511,7 +2638,8 @@ class Session:
             grid: ``True`` overlays the labelled A-H by 1-8 grid; ``"fine"`` divides
                 what is on screen into labelled tenths instead, which is how a place
                 *inside* a cell gets named.
-            values: greyscale, for judging the value structure.
+            values: greyscale, for judging the value structure. Left off, colour for
+                a painting and greyscale for a drawing (``Session(medium=)``).
             region: crop to a region, enlarged so a small crop is readable. With
                 ``reference``, **both** panels are cropped to the same place.
             reference: place a reference image alongside for comparison.
@@ -2529,6 +2657,7 @@ class Session:
             s.look(region=cell("D4"), reference=ref, grid="fine")
         """
         ref_img = None if reference is None else load_reference(reference)
+        values = self._values_view_wanted(values)
 
         current = self._look_array(values, impasto, sketch)
         img = render_look(
@@ -2553,15 +2682,27 @@ class Session:
         ref_img = None if ref is None else load_reference(ref)
         diff = kwargs.pop("diff", False)
         show_marks = kwargs.pop("marks", True)
+        kwargs["values"] = self._values_view_wanted(kwargs.get("values"))
         img = render_look(
             self.canvas, reference=ref_img,
             diff_against=self._last_look if diff else None,
             marks=self.marks if show_marks else None, guides=self.guides, **kwargs
         )
         self._last_look = self._look_array(
-            kwargs.get("values", False), kwargs.get("impasto", True), kwargs.get("sketch", True)
+            kwargs["values"], kwargs.get("impasto", True), kwargs.get("sketch", True)
         )
         return img
+
+    def _values_view_wanted(self, values: bool | None) -> bool:
+        """Whether a look is a values view: as asked, or by the medium when not asked.
+
+        A drawing has no colour to read, and its painter plans in values, so its
+        looks are greyscale unless colour is asked for; a painting's are colour
+        unless values are. ``None`` is *not asked*.
+        """
+        if values is None:
+            return getattr(self, "medium", "paint") == "graphite"
+        return bool(values)
 
     def _look_array(self, values: bool, impasto: bool, sketch: bool) -> np.ndarray:
         """The array :func:`render_look` actually draws, before any grid or diff tint.
@@ -3389,6 +3530,7 @@ class Session:
         """
         trial = Session.__new__(Session)
         trial.seed = self.seed
+        trial.medium = self.medium
         # A separate generator holding this one's current state. `block_in` and
         # `sweep` draw their pass wander from here, so a copy of the state is what
         # makes a rehearsed mass the same mass, pixel for pixel, when it is painted
@@ -5286,6 +5428,11 @@ class Session:
             "banding_told": (None if self._banding_told is None
                              else [int(self._banding_told[0]), int(self._banding_told[1])]),
             "has_sketch": bool(self.canvas.has_sketch),
+            # The graphite medium's channel and the declaration that chose it. Both
+            # new keys read with `.get`, so a file written before the medium existed
+            # opens as a painting with no drawing in it -- which is what it is.
+            "has_graphite": bool(self.canvas.has_graphite),
+            "medium": self.medium,
             "assisted": list(self.assisted),
             # What the engine has said at a call, in order. Beside the log, never in
             # it -- see :meth:`_notify` -- and a key an older build does not read, so
@@ -5329,6 +5476,10 @@ class Session:
                     # carry it.
                     sketch=(self.canvas.sketch if self.canvas.has_sketch
                             else np.zeros((0, 0), dtype=np.float32)),
+                    # The same rule for the drawing's own channel: a plane only when
+                    # there is a drawing. An older build never reads the key.
+                    graphite=(self.canvas.graphite if self.canvas.has_graphite
+                              else np.zeros((0, 0), dtype=np.float32)),
                     # Always empty, since 0.7.0. The time-lapse was more than half of
                     # a painting's file -- 8.83 of 16.11 MB after 171 marks -- for a
                     # film a painter makes once, at the end, and the log rebuilds it
@@ -5370,6 +5521,12 @@ class Session:
                         f"format {_EASEL_FORMAT}."
                     )
                 s = cls.__new__(cls)
+                # A file written before the medium existed is a painting.
+                medium = str(meta.get("medium", "paint"))
+                if medium not in MEDIA:
+                    raise ValueError(f"meta names a medium this build does not know: "
+                                     f"{medium!r}.")
+                s.medium = medium
                 # Before anything that can say something, because the first thing
                 # this build says about a loaded file is often the out_dir line below.
                 # A code this build does not know is dropped rather than kept: the
@@ -5483,6 +5640,15 @@ class Session:
                 else:
                     canvas.sketch = np.zeros((canvas.height, canvas.width), dtype=np.float32)
                     canvas.has_sketch = False
+                # The drawing's own channel, read the same way: absent from every file
+                # saved before the medium existed, and stored only when drawn in.
+                stored = data["graphite"] if "graphite" in data.files else None
+                if stored is not None and stored.size:
+                    canvas.graphite = stored.astype(np.float32)
+                    canvas.has_graphite = True
+                else:
+                    canvas.graphite = np.zeros((canvas.height, canvas.width), dtype=np.float32)
+                    canvas.has_graphite = False
                 s.canvas = canvas
 
                 s.palette = Palette()
@@ -5549,6 +5715,7 @@ class Session:
             out_dir=self.out_dir,
             texture_strength=self.canvas.texture_strength,
             budget=self.budget,
+            medium=self.medium,
         )
         for name, rgb in self.palette.slots.items():
             fresh.palette[name] = rgb
@@ -5605,6 +5772,16 @@ class Session:
                 )
             elif record.kind == "erase":
                 made = fresh.erase(_place_from_params(record.params), note=record.note)
+            elif record.kind == "graphite":
+                made = fresh.line(
+                    record.points,
+                    grade=str(record.params.get("grade", record.brush or "HB")),
+                    pressure=record.pressure,
+                    tip=str(record.params.get("tip", "point")),
+                    width=record.params.get("width"),
+                    smooth=bool(record.params.get("smooth", True)),
+                    note=record.note,
+                )
             else:
                 params = dict(record.params)
                 color = params.pop("color", record.color_hex or "#000000")
@@ -5777,17 +5954,19 @@ class Session:
         self._clip_memo = (key, cover)
         return cover
 
-    def _snapshot(self, box: tuple[int, int, int, int] | None = None) -> None:
+    def _snapshot(self, box: tuple[int, int, int, int] | None = None,
+                  graphite_only: bool = False) -> None:
         """Push the canvas onto the undo stack, unless this session lays no paint.
 
         One place, because every verb that marks the canvas has to do it and a
         count-only copy has to do it nowhere -- see :meth:`scratch`. ``box`` is the
         part of the canvas the action about to happen can reach, where the caller
         knows it; the verbs that can touch anywhere (``dry``, ``erase``, ``pencil``)
-        pass nothing and copy the lot.
+        pass nothing and copy the lot. ``graphite_only`` is a graphite mark's: the one
+        channel it can touch (:meth:`Canvas.snapshot <easel.canvas.Canvas.snapshot>`).
         """
         if not self._counting:
-            self.history.push_snapshot(self.canvas.snapshot(box))
+            self.history.push_snapshot(self.canvas.snapshot(box, graphite_only=graphite_only))
 
     def _resolve_brush(self, brush, size, opacity, overrides: dict) -> Brush:
         b = brush if isinstance(brush, Brush) else get_brush(str(brush))
@@ -5915,6 +6094,10 @@ _NOT_BRUSH_FIELDS = {
     "pressure": (
         "pressure= is an argument of every painting call, not a brush field: it is a "
         "profile along one stroke rather than a property of the brush."
+    ),
+    "grade": (
+        "grade= is a pencil, and an argument of s.line(points, grade=...), the graphite "
+        "medium's mark -- not a brush field. A paint stroke has no grade."
     ),
 }
 

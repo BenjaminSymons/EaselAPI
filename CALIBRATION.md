@@ -298,6 +298,53 @@ underdrawing survives under a dry-brush pass and in the ground.
 
 ---
 
+## The graphite medium
+
+The drawing's own channel (`Canvas.graphite`, laid by `s.line()`), measured off the
+view the way `compare()` reads a place: the **median value** of a patch `0.30 x 0.12`
+at the centre of a `1024x768` canvas, `0` black and `1` white, filled with `side` passes
+laid across it, each later pass crossing the one before. White `cartridge` reads
+`0.957` bare. `open` is the share of the patch's pixels the first pass reached at all,
+which is the speckle a light hand leaves. `scripts/probe_graphite_scale.py`; rerun it
+after moving a grade, and move the table with it.
+
+| Grade | Ceiling | `p=0.25` x1 / x2 / x4 | open | `p=0.5` x1 / x2 / x4 | open | `p=1` x1 / x2 / x4 | open |
+|---|---|---|---|---|---|---|---|
+| `4H` | 0.35 | 0.96 / 0.96 / 0.96 | 10% | 0.95 / 0.95 / 0.95 | 40% | 0.69 / 0.65 / 0.63 | 87% |
+| `2H` | 0.45 | 0.96 / 0.96 / 0.96 | 25% | 0.86 / 0.75 / 0.60 | 59% | 0.58 / 0.55 / 0.53 | 98% |
+| `HB` | 0.60 | 0.95 / 0.94 / 0.89 | 48% | 0.59 / 0.50 / 0.42 | 80% | 0.44 / 0.41 / 0.38 | 100% |
+| `2B` | 0.78 | 0.63 / 0.48 / 0.33 | 70% | 0.39 / 0.31 / 0.24 | 95% | 0.28 / 0.24 / 0.22 | 100% |
+| `4B` | 0.88 | 0.44 / 0.33 / 0.21 | 85% | 0.28 / 0.21 / 0.15 | 99% | 0.18 / 0.15 / 0.13 | 100% |
+| `6B` | 0.96 | 0.31 / 0.21 / 0.11 | 95% | 0.18 / 0.13 / 0.07 | 100% | 0.10 / 0.08 / 0.05 | 100% |
+
+What the table says, as the rules the grades are written to hold:
+
+- **A grade's floor is its ceiling.** Four passes of a `6B` at full pressure read `0.05`
+  and a `4H`'s read `0.63`; the deposit saturates toward `paper x (1 - ceiling)` and
+  the fourth pass closes most of what the second left. The acceptance criterion's
+  *darkest value at or above `0.80` from the paper* is a `2B` at full pressure twice,
+  a `4B` once, or a `6B` at half pressure.
+- **A hard grade under a light hand lays nothing you can measure.** `4H` and `2H` at
+  `p=0.25` leave the paper at `0.96` on the side, reaching 10% and 25% of the tooth; on
+  the point the same pressures leave a broken line that reads in the sampler and not in
+  a median. That is the speckle of a hard sketch line, and the grade for a light tone
+  is a soft one at low pressure, not a hard one leant on.
+- **Pressure is worth about a grade.** `HB` at `p=1` (`0.44`) sits between `2B` at
+  `p=0.5` (`0.39`) and `2H` at `p=1` (`0.58`); one step of pressure and one step of
+  grade move the value by about the same amount in the middle of the box, and the
+  pressure moves the width and the tooth with it where the grade does not.
+- The side lays less than the point per pass and rides higher on the tooth (its bite is
+  the point's less `0.12`); these are side-tip figures, and a point line's core at the
+  same pressure is a step darker.
+
+The within-stroke rule is the one `LESSONS.md` keeps: a stroke's dabs accumulate as a
+maximum and the strokes add, saturating. The burnish exponent (`_BURNISH`, `0.5`) and
+the filled-tooth term (`_FILLED_TOOTH`, `0.30`) are the two numbers here nothing else
+constrains; both are starting values, and the first drawing's log is where they get
+measured.
+
+---
+
 ## Wetness
 
 - Paint lands at roughly `0.7` wetness.

@@ -171,7 +171,7 @@ s.circle((0.5, 0.5), 0.09, wobble=0.25)    # round, with a silhouette nobody dre
 ```
 
 Grounds: `white`, `warm_white`, `toned_grey`, `toned_warm_grey`, `burnt_sienna`,
-`umber_wash`, `cool_grey`. Textures: `smooth`, `linen`, `rough`. **Start on a toned
+`umber_wash`, `cool_grey`. Textures: `smooth`, `linen`, `rough`, `cartridge`. **Start on a toned
 ground.** A mid-tone ground means your first marks already sit in a value relationship,
 and any ground left showing reads as a colour you chose; on white every gap is a hole.
 A picture whose masses all sit below the presets wants a ground of its own:

@@ -636,7 +636,7 @@ def build_server() -> MCPServer:
         Args:
             session: where to write the .easel file.
             size: WIDTHxHEIGHT in pixels, e.g. "900x675".
-            texture: canvas tooth -- "smooth", "linen" or "rough".
+            texture: canvas tooth -- "smooth", "linen", "rough" or "cartridge".
             ground: a named ground ("white", "toned_grey", ...), or a hex colour.
                 Painting on white is the hardest thing to judge values against.
             seed: the determinism seed. Same seed and same calls, same painting.
