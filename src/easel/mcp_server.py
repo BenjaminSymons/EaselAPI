@@ -13,11 +13,15 @@ PNG inline beside the path they wrote it to, so the loop the guide asks for -- l
 every five to fifteen strokes -- costs one call instead of a call and a file read.
 ``run`` does the same for a pass it rehearses.
 
-It adds three tools the CLI has not got, and they are the three questions about a
+It adds four tools the CLI has not got, and they are the four questions about a
 mark that has not been made yet: ``preview`` (where does it go), ``rehearse`` (what
-will it look like) and ``cost`` (what does it charge). They take the plan the
-Python API takes, written as JSON, and hand back the Python that paints it -- so
-the plan that was checked is the plan that lands, rather than one retyped from it.
+will it look like), ``cost`` (what does it charge) and ``thumbnail`` (how does the
+arrangement read, flat and small). The first three take the plan the Python API
+takes, written as JSON, and hand back the Python that paints it -- so the plan that
+was checked is the plan that lands, rather than one retyped from it. In a drawing
+(``new`` with ``medium="graphite"``) the same plan carries the pencil's kinds -- a
+mark by its grade, a hatch, a scribble, a contour -- and the echo is the drawing's
+own verb.
 
 Painting itself goes through ``run``, exactly as it does from the shell: the script
 has ``s``, ``palette`` and the whole public API already in scope, and the server
@@ -150,7 +154,12 @@ _PLAN_HELP = (
     "centred fall-off. A burial is an object with 'cover' (a place) and 'color', "
     "held to that place unless 'edge' says \"ragged\". "
     "A bare place on its own is a mass. A whole pass is a plan: its masses, "
-    "passages, marks and films, in the order they are laid."
+    "passages, marks and films, in the order they are laid. "
+    "In a drawing (a session made with medium \"graphite\") a mark with 'grade' is "
+    "a line of the pencil -- 'points', 'grade', 'pressure', 'tip' -- and a bare run "
+    "of points is one of the default grade; 'hatch', 'scribble' and 'contour' name "
+    "the place they fill or follow, with any argument of that verb beside it: "
+    "'angle' (a list for a crosshatch), 'spacing', 'grade', 'pressure', 'density'."
 )
 
 
@@ -298,7 +307,7 @@ def _is_place_object(entry: dict) -> bool:
             and len([k for k in entry if k in _BUILDERS]) == 1)
 
 
-def _plan(entries) -> tuple[list, list[str]]:
+def _plan(entries, medium: str = "paint") -> tuple[list, list[str]]:
     """A JSON plan, as the planning tools take it, and the Python that paints it.
 
     The second half is the point. Through the server a plan is JSON and a painting
@@ -306,16 +315,27 @@ def _plan(entries) -> tuple[list, list[str]]:
     that will drift between the two -- which is the one thing ``preview``,
     ``rehearse`` and ``cost`` exist to prevent. Every one of them hands back the
     call it just priced, ready to paste into ``run``.
+
+    ``medium`` is the session's, and decides one thing: what a bare run of points
+    is. In a painting it is a stroke; in a drawing it is a line of the default grade,
+    as the library's own plan reads it -- so the path is handed on bare, for the
+    engine to read by its medium, and the echo names the verb the engine will call.
+    A mark that names its ``grade`` is a line in either medium.
     """
     if isinstance(entries, (dict, str)) or _one_path(entries):
         entries = [entries]
+    drawing = medium == "graphite"
     specs: list = []
     lines: list[str] = []
     for entry in entries:
         if not isinstance(entry, dict):
             if _one_path(entry):
-                specs.append({"points": _points(entry)})
-                lines.append(f"s.stroke({_py_points(entry)})")
+                if drawing:
+                    specs.append(_points(entry))
+                    lines.append(f"s.line({_py_points(entry)})")
+                else:
+                    specs.append({"points": _points(entry)})
+                    lines.append(f"s.stroke({_py_points(entry)})")
                 continue
             specs.append(_place(entry))
             lines.append(f"s.block_in({_py_place(entry)})")
@@ -326,7 +346,23 @@ def _plan(entries) -> tuple[list, list[str]]:
             lines.append(f"s.block_in({_py_place(entry)})")
             continue
 
-        if "cover" in entry:
+        if "points" in entry and "grade" in entry:
+            # The pencil's mark. Its grade names it, in either medium, as the
+            # library's plan reads it; the brush fields stay allowed, as everywhere.
+            _check("line", entry)
+            specs.append(dict(entry, points=_points(entry["points"])))
+            lines.append(f"s.line({_py_points(entry['points'])}"
+                         f"{_echo_args(entry, 'points', 'label')})")
+        elif "hatch" in entry or "scribble" in entry or "contour" in entry:
+            # The three helpers that fill or follow a place, each named by its own
+            # verb as `cover` is, because their first argument is the generic place.
+            kind = next(k for k in ("hatch", "scribble", "contour") if k in entry)
+            _check(kind, entry)
+            source = entry[kind]
+            specs.append(dict(entry, **{kind: _place(source)}))
+            lines.append(f"s.{kind}({_py_place(source)}"
+                         f"{_echo_args(entry, kind, 'points', 'label')})")
+        elif "cover" in entry:
             _check("cover", entry)
             source = entry["cover"]
             specs.append(dict(entry, cover=_place(source)))
@@ -368,9 +404,11 @@ def _plan(entries) -> tuple[list, list[str]]:
         else:
             raise ValueError(
                 f"A plan entry is a mark ('points'), a mass ('shape'), a sweep "
-                f"('edge'), a passage ('band' with 'color_a' and 'color_b') or a "
-                f"burial ('cover'), and {sorted(entry)} is none of them. A place on "
-                f"its own is a mass, and a bare list of points is a mark."
+                f"('edge'), a passage ('band' with 'color_a' and 'color_b'), a "
+                f"burial ('cover'), or in a drawing a line ('points' with 'grade'), "
+                f"a 'hatch', a 'scribble' or a 'contour' naming its place -- and "
+                f"{sorted(entry)} is none of them. A place on its own is a mass, and "
+                f"a bare list of points is a mark."
             )
     return specs, lines
 
@@ -620,25 +658,34 @@ def build_server() -> MCPServer:
             "paid for, `cost`, `preview` and `rehearse` say what it charges, where it "
             "goes and what it will look like, and hand back the Python that paints it.\n\n"
             "Coordinates are normalised 0..1 with the origin at the top-left; nothing "
-            "here takes a pixel. `brushes` lists every name that can be said."
+            "here takes a pixel. `brushes` lists every name that can be said.\n\n"
+            "A drawing in graphite is `new` with medium \"graphite\": the paper is "
+            "cartridge, `look` is a values view, the marks are `line`, `hatch`, "
+            "`scribble`, `contour`, `tone`, `stump` and the erasers, and the method is "
+            "`guide` with document \"draftsman\", read instead of the painter's. `new` "
+            "with capture keeps every look and pass beside the log, and `film` plays "
+            "the drawing back a mark at a time with those looks held."
         ),
     )
 
     # -- the CLI verbs -------------------------------------------------------------
     @server.tool()
     @_tool
-    def new(session: str, size: str = "1024x768", texture: str = "linen",
+    def new(session: str, size: str = "1024x768", texture: str = "",
             ground: str = "white", seed: int = 0, out_dir: str = "out",
             timelapse: bool | int = True, force: bool = False,
-            budget: int | None = None) -> str:
+            budget: int | None = None, medium: str = "paint",
+            capture: bool = False) -> str:
         """Create a session file: the canvas, and the painting's only state.
 
         Args:
             session: where to write the .easel file.
             size: WIDTHxHEIGHT in pixels, e.g. "900x675".
-            texture: canvas tooth -- "smooth", "linen", "rough" or "cartridge".
+            texture: canvas tooth -- "smooth", "linen", "rough" or "cartridge". Left
+                off, the medium's own: linen for paint, cartridge for graphite.
             ground: a named ground ("white", "toned_grey", ...), or a hex colour.
-                Painting on white is the hardest thing to judge values against.
+                Painting on white is the hardest thing to judge values against; a
+                drawing is on white paper.
             seed: the determinism seed. Same seed and same calls, same painting.
             out_dir: where look(), preview() and compare() write their PNGs.
             timelapse: keep a time-lapse. A number is the frame's long side in
@@ -649,6 +696,12 @@ def build_server() -> MCPServer:
             budget: how many strokes this painting is allowed. Nothing is refused
                 when it runs out, but `run` then reports spent and remaining and
                 `cost` says when one plan would eat a large share of what is left.
+            medium: "paint", or "graphite" for a drawing: the pencil's grades, tips
+                and helpers, a values view from `look`, and the method in `guide`
+                with document "draftsman". Saved with the file. Nothing is refused
+                in either medium.
+            capture: keep every look, rehearsal and pass beside the log, for `film`
+                and its viewer -- the painter's own looks held where they were taken.
         """
         path = Path(session)
         if path.exists() and not force:
@@ -657,10 +710,12 @@ def build_server() -> MCPServer:
                 f"into it as it is."
             )
         w, h = parse_size(size)
-        s = Session(w, h, texture=texture, ground=ground, seed=seed,
-                    timelapse=timelapse, out_dir=out_dir, budget=budget)
+        s = Session(w, h, texture=texture or None, ground=ground, seed=seed,
+                    timelapse=timelapse, out_dir=out_dir, budget=budget,
+                    medium=medium, capture=capture)
         s.save(path)
-        return f"Created {path} ({w}x{h}, {texture}, ground {ground}, seed {seed})"
+        return (f"Created {path} ({w}x{h}, {s.canvas.texture_name}, ground {ground}, "
+                f"seed {seed}, {medium}{', capturing' if capture else ''})")
 
     @server.tool()
     @_tool
@@ -827,7 +882,7 @@ def build_server() -> MCPServer:
     @server.tool()
     @_tool
     def look(session: str, region: Place | None = None, grid: bool | str = False,
-             values: bool = False, reference: str = "", diff: bool = False,
+             values: bool | None = None, reference: str = "", diff: bool = False,
              scale: int | None = None, sketch: bool = True, marks: bool = True,
              output: str = "") -> list:
         """Look at the canvas. Returns the PNG, and the path it was written to.
@@ -843,7 +898,8 @@ def build_server() -> MCPServer:
                 on screen into labelled tenths instead, which is how a place inside
                 a cell gets named.
             values: greyscale, for judging the value structure -- squinting, in
-                other words. Use it early and often.
+                other words. Use it early and often. Left off, colour for a painting
+                and greyscale for a drawing, which is its medium's own view.
             reference: a photograph to place alongside, for the copy stage.
             diff: tint what has changed since the previous look.
             scale: long-side pixels. 0 for full resolution.
@@ -1073,6 +1129,59 @@ def build_server() -> MCPServer:
                 else s.timelapse_gif(out, fps=fps, every=every, scale=scale,
                                      from_log=from_log))
         return str(path)
+
+    @server.tool()
+    @_tool
+    def film(session: str, output: str = "", fps: float = 12.0, every: int = 1,
+             scale: int = 720, hold_looks: float = 1.0, stroke_motion: bool = False,
+             captions: bool = False, html: str = "") -> str:
+        """Write the painting as a film, a mark at a time -- and the page that scrubs it.
+
+        The other time-lapse. Rebuilt from the log one record at a time, so a frame
+        per mark and not the thinned sequence `timelapse` keeps, with the painter's
+        own looks held where they were taken when the session was made with
+        `capture`, and each graphite stroke travelling over three frames with
+        `stroke_motion`. A full repaint: a drawing of a few hundred marks takes a
+        minute or two. A film is not a picture, so nothing comes back inline; this
+        hands back the paths it wrote, one per line.
+
+        Args:
+            session: the .easel file.
+            output: where to write the film. The suffix picks the format: .mp4
+                (needs ffmpeg -- `pip install easel-paint[film]` brings one), .gif,
+                or a path with no suffix for a directory of PNG frames. Left off,
+                `html` must be given.
+            fps: frames per second.
+            every: a frame per this many marks. The finished picture is always the
+                last frame.
+            scale: the frame's long side in pixels, 720 when left off; 0 for the
+                canvas's own size.
+            hold_looks: how long each captured look is held, in seconds; 0 leaves
+                the looks out, for the marks alone.
+            stroke_motion: lay each graphite stroke over three frames, so a long
+                line visibly travels. A paint stroke arrives whole either way.
+            captions: a strip under each frame naming the mark, its grade or brush,
+                and the pass that laid it.
+            html: write the viewer -- index.html, film.json and a frames/ directory
+                -- under this directory, instead of or as well as `output`: a
+                scrubber over the marks, play at `fps`, and beside each mark the line
+                of the pass script that laid it and the last look before it.
+        """
+        if not output and not html:
+            raise ValueError(
+                "film needs output (.mp4, .gif, or a directory of PNG frames), html "
+                "(a directory for the viewer), or both."
+            )
+        s = _load(session)
+        common = dict(fps=fps, every=every, scale=None if int(scale) == 0 else int(scale),
+                      hold_looks=hold_looks, stroke_motion=stroke_motion,
+                      captions=captions)
+        written = []
+        if output:
+            written.append(str(s.film(output, **common)))
+        if html:
+            written.append(str(s.viewer(html, **common)))
+        return "\n".join(written)
 
     @server.tool()
     @_tool
@@ -1336,7 +1445,7 @@ def build_server() -> MCPServer:
         """
         s = _load(session)
         told = len(s.notices())
-        specs, lines = _plan(plan)
+        specs, lines = _plan(plan, s.medium)
         path = s.preview(specs, reference=reference or None,
                          region=None if region is None else _place(region),
                          grid=_grid(grid), values=values, scale=_scale(scale),
@@ -1384,7 +1493,7 @@ def build_server() -> MCPServer:
         """
         s = _load(session)
         told = len(s.notices())
-        specs, lines = _plan(plan)
+        specs, lines = _plan(plan, s.medium)
         path = s.rehearse(specs, reference=reference or None,
                           region=None if region is None else _place(region),
                           grid=_grid(grid), values=values, scale=_scale(scale),
@@ -1415,7 +1524,7 @@ def build_server() -> MCPServer:
         """
         s = _load(session)
         told = len(s.notices())
-        specs, lines = _plan(plan)
+        specs, lines = _plan(plan, s.medium)
         # Why, not only how much: a number four to twelve times what a painter would
         # have guessed is a crossed direction, a bounding box much bigger than the
         # mass, or a concave outline cutting every pass -- and all three are cheap to

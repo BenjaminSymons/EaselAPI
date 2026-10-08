@@ -955,7 +955,10 @@ it was written to, and as `alternatives`, several versions of one pass, rehearse
 on a copy of its own and handed back side by side in one sheet. `preview`, `rehearse`
 and `cost` each hand back the Python that paints the plan they checked; paste that into
 `run` rather than retyping it, because a plan retyped between checking and painting
-drifts.
+drifts. `new` takes `medium` and `capture` as `easel new` does, and its `texture` left
+off follows the medium; `look` with `values` left off follows it too; and `film` writes
+the film, the viewer under `html`, or both, and hands back the paths it wrote -- the one
+tool whose answer is not a picture, since a film is not one.
 
 A **place** arrives as JSON in any of six forms — a named region, a grid cell, a span, a
 rectangle, an outline, or a shape builder with its own arguments:
@@ -989,7 +992,7 @@ a colour, and `[value, clip]` holds a place inside a clip, as in Python.
 
 The server is `easel-mcp`, or `python -m easel.mcp_server` when the scripts directory
 is not on `PATH`. It needs one extra: `pip install easel-paint[mcp]`. The `guide` tool
-returns any of the six documents, so a client with no repository to read still has the
+returns any of the seven documents, so a client with no repository to read still has the
 method, and `explain` and `diagnose` hand over the passage behind a code or a symptom
 without it having to fetch a file at all. `demo` hands back its sheet inline, like the
 looking tools.

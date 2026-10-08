@@ -109,6 +109,7 @@ build on Windows.
 ```bash
 pip install easel-paint          # the engine, the CLI and the Python API
 pip install "easel-paint[mcp]"   # and the MCP server
+pip install "easel-paint[film]"  # and an ffmpeg, for the film's MP4
 ```
 
 ```python
@@ -166,14 +167,14 @@ The engine is designed around one habit:
 [`llms.txt`](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/llms.txt) is
 the same signpost in the format a model fetching this repository is increasingly told
 to look for: the summary, what to know before reading further, and where each document
-is, in about 1,500 words.
+is, in about 1,600 words.
 
 ## What is in the box
 
 | Piece | What it does |
 |---|---|
 | `Session` | The one object you hold. Canvas, palette, seed, history, `look()`. |
-| `Canvas` | Linear-light RGB plus `wetness`, `thickness`, `sketch` (graphite) and canvas `height` (tooth). |
+| `Canvas` | Linear-light RGB plus `wetness`, `thickness`, `sketch` (the pencil underdrawing), `graphite` (the drawing, when the medium is graphite) and canvas `height` (tooth). |
 | Brushes | `round_soft`, `round_hard`, `liner`, `flat`, `bristle`, `knife`, `smudge`. Procedural tips, and `tip_wobble` gives a round one a silhouette of its own, redrawn per mark. |
 | `Palette` | A limited pigment set with no black. Mix, tint, shade, and name your mixes. |
 | Regions | `region("top-left")`, `cell("D6")`, `horizon(0.4)`, `below(...)`, `between(...)`. |
@@ -181,7 +182,7 @@ is, in about 1,500 words.
 | Masses | `block_in(place, ...)` fills a rectangle *or a shape* with overlapping passes, stopping at the silhouette, or drawing its contour with `edge="clean"`; `solid=True` when it has to be solid paint, because density spaces the passes rather than filling them. `sweep(edge, ...)` lays a mass as passes along its own boundary, stepped inward. Both emit ordinary strokes. |
 | Passages and repairs | `scumble(band, a, b, n)` lays a soft passage as `n` overlapping passes stepping between two values — the thing a gradient tool would be for, as paint — and `direction="inward"` runs them round a patch instead of across it, for a value falling off from a centre. `cover(place, color)` buries a mistake with every clause of the correction recipe already set. `smudge(edge, ...)` loses an edge along its own shape: points, or a mass whose outline it walks. |
 | `look()` | Grid overlay, greyscale values, region crop, side-by-side, diff, landmarks, and a fine grid of labelled tenths inside a crop. |
-| Drawing | `pencil()` lays graphite under the paint, which covers it in proportion to what actually lands. Not counted as a stroke. |
+| Drawing | `pencil()` lays graphite under the paint, which covers it in proportion to what actually lands. Not counted as a stroke. A drawing *as* the picture is the graphite medium, below. |
 | Planning | `thumbnail()` draws the arrangement flat and small — each place at its value, or with nothing handed to it the plan's places and every mass laid so far — which is where a silhouette reads or does not, and `easel run pass.py --thumbnail` draws it for a pass before a mark of the pass is paid for; `preview()` shows where a mark would go over both panels; `rehearse()` paints it on a copy and shows what it would look like; `cost()` says what it charges and `cost_line()` says *why*; `paint()` then paints that same plan, so no line of it is written twice. Only the last of the five touches the canvas. |
 | Measuring | `compare(reference)` gives the per-cell value of both and the difference, as a table and a heat map. `compare({place: value})` measures against your own written value plan instead, for painting with no reference at all — and names the pairs the plan itself puts within `0.10` of each other. `prepare(reference)` cuts the photograph into numbered masses. `palette.chroma_of` is *how coloured*, beside `value_of` for how light. |
 | The check | `report()` reads the guide's standing warnings off the log — one brush at one size for a whole pass, a stack of passes at one angle, a bristle too small to be a brush, detail before the masses, a pressure list asking a chisel for a width, the subject's share of the marks — and measures the canvas for the four that no log can hold: where the values sit and whether the picture has a clear light, how its edges divide between hard and soft, how much ground is left, how much graphite is still showing. `run` prints it beside the budget line after every pass, and a finding names the marks it counted, by the script line that laid them. |
@@ -189,11 +190,62 @@ is, in about 1,500 words.
 | The closing checklist | `checklist()` — `easel check` — answers every line of the guide's closing checklist that has a number behind it, and then prints the three that nothing can measure as questions, with your own `why` quoted back. |
 | Budget | `Session(budget=300)` holds the split a painter is told to write down: `run` reports spent and remaining, and under it the pass's dearest calls by the line that made them; `cost` flags a plan that would eat a large share of what is left. Nothing is ever refused. |
 | The plan | `s.plan(why=, values=, lightest=, subject_share=, bands=, ground=, key=)` holds the rest of what a painter is told to settle before the first mark, and the check measures the canvas against it rather than against generic advice — including three standing lines a picture can declare its way out of, where the rule concedes something only the painter knows: bars that are the subject, a ground that is buried, a key that is low or high. Saved in the session file; `easel plan` from a shell. |
-| History | Every stroke logged as data. Undo, replay, GIF time-lapse, contact sheet. |
+| History | Every stroke logged as data. Undo, replay, GIF time-lapse, contact sheet, and the film: the log played back a mark at a time, with the painter's own looks held where they were taken. |
 
 Coordinates are always normalised `0.0–1.0` with the origin top-left. Raw pixels are
 never exposed, because absolute pixel coordinates are exactly what a language model
 is worst at.
+
+## Drawing in graphite
+
+![Pencil sampler: six grades from 4H to 6B at three pressures on each paper, on the point and on the side of the pencil](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/samples/pencils.png)
+
+*Every grade at three pressures on each paper, point and side. Regenerate with
+`python scripts/make_pencil_sampler.py`; the measurements behind it are in
+`CALIBRATION.md`.*
+
+The same engine draws. `Session(medium="graphite")` declares a drawing: the paper is
+`cartridge` unless another texture is named, `look()` is a values view, and the file
+keeps the declaration. Graphite is a deposit of value, gated by the paper's tooth and
+saturating toward the grade's own ceiling, so a `2H` leant on never lays a `6B`'s
+black and a hard grade under a light hand catches only the high points of the tooth. It
+is a channel
+of its own beside the paint, never buried by it and charged like it, and nothing is
+refused in either medium.
+
+```python
+from easel import Session, cell
+
+s = Session(1024, 768, medium="graphite", seed=11, budget=400, capture=True)
+s.contour(cell("D5"), grade="2H", pressure=0.4)                  # the envelope, light
+s.hatch("C3:F6", angle=35, grade="2B", tip="side")               # a mass, the pencil laid over
+s.stump("C3:F6", strength=0.5)                                   # blend it: moved, not removed
+s.look()                                                         # greyscale, for a drawing
+s.line([(0.3, 0.6), (0.5, 0.62)], "6B", pressure=[0.2, 1.0])     # the darks, last
+s.film("drawing.mp4", stroke_motion=True)                        # a mark at a time, the looks held
+```
+
+`line` is the primitive: one stroke of one grade along a pressure profile, on the
+`point` or the `side` of the pencil. `hatch`, `crosshatch`, `contour`, `scribble` and
+`tone` lay runs of them, `stump` blends what is there, and `kneaded` and `plastic`
+lift toward a ghost that never reaches white. Every helper lays `line` records, so the
+undo, the replay and the film see one kind of mark.
+[`DRAFTSMAN.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/DRAFTSMAN.md) is
+the method for it, in the shape of `PAINTER.md` and written from what the first test
+drawing cost; `easel guide --draftsman` prints it, and `guide` with
+`document="draftsman"` hands it over MCP. `report()` and `easel check` read a drawing
+by its own lines: a run of marks with no look between them, the box of pencils on
+this paper, the planned light as paper never touched, the darkest value against `0.80`.
+
+With `capture=True` the session keeps every look, rehearsal and pass beside the log,
+and `easel film` plays the drawing back a mark at a time with those looks held where
+they were taken: an MP4, a GIF or a directory of PNG frames, and with `--html` a page
+that scrubs to any mark beside the script line that laid it.
+[`drawings/`](https://github.com/Gemberkoekje/EaselAPI/tree/main/drawings) holds the two
+test drawings of `SPEC.md`, a hen's egg in a bowl drawn twice from the same words by two
+fresh sessions, the first with no guide and the second against the guide written from
+it, each with its passes, its session file, its two films and its notes, re-measured
+against the spec's criteria.
 
 ## Command line
 
@@ -202,6 +254,7 @@ shell without holding a Python process open.
 
 ```bash
 easel new painting.easel --size 1024x768 --texture linen --ground toned_grey --seed 7 --budget 300
+easel new drawing.easel --medium graphite --capture --budget 400   # a drawing, its looks kept for the film
 easel run painting.easel first_pass.py
 easel run painting.easel first_pass.py --thumbnail  # its masses, flat and small, unpainted
 easel run painting.easel first_pass.py --rehearse   # against a copy, committing nothing
@@ -217,6 +270,8 @@ easel prepare painting.easel ref.jpg --level coarse
 easel undo painting.easel 3
 easel export painting.easel painting.png
 easel timelapse painting.easel painting.gif --every 3 --scale 240
+easel film drawing.easel drawing.mp4 --stroke-motion   # a mark at a time, the looks held
+easel film drawing.easel --html viewer                 # a page that scrubs to any mark
 easel brushes
 easel guide                                          # the method, in about 1,400 words
 easel guide --full                                   # all of PAINTER.md
@@ -263,13 +318,18 @@ is listed in the official MCP registry as `io.github.Gemberkoekje/easel`;
 [`server.json`](https://github.com/Gemberkoekje/EaselAPI/blob/main/server.json) at
 the repository root is what is published there.
 
-Twenty-one tools: the seventeen CLI verbs, plus `preview`, `rehearse`, `cost` and
+Twenty-two tools: the eighteen CLI verbs, plus `preview`, `rehearse`, `cost` and
 `thumbnail` — the four questions about marks that have not been made yet. Marks are
 made by `run`, which takes the script as text, and `run(rehearse=true)` tries a whole
 pass against a copy and commits nothing; `run(alternatives=[...])` tries versions of
 one, each on a copy of its own, and hands them back side by side; `run(thumbnail=true)`
 counts a pass and hands back its masses flat and small, before any of it is paid for. A place is a name, a cell, a span,
 a rectangle, an outline, or a shape builder like `{"blob": "D5", "radius": 0.12}`.
+`new` with `medium` set to `graphite` starts a drawing, as `easel new --medium graphite`
+does, and with `capture` keeps its looks for `film`, which writes the film and the
+viewer and hands back their paths -- the one tool whose answer is not a picture, since a
+film is not one. A plan sent to a drawing carries the pencil's kinds: a mark with
+`grade`, and `hatch`, `scribble` and `contour` naming their place.
 
 `run` executes Python sent by its client, exactly as `easel run` does: launch it
 for a painter you would hand a shell to.

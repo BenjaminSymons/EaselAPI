@@ -3,8 +3,8 @@
   "name": "easel",
   "display_name": "Easel",
   "version": "0.0.0",
-  "description": "A headless painting engine for AI agents: brushes, paint load, wet blending, canvas texture.",
-  "long_description": "Easel is a painting engine, not a drawing API. A brush carries a finite load of paint that runs out along the stroke, picks up what is already wet on the canvas, and drags against the tooth of the ground. The tools are the eighteen CLI verbs plus `preview`, `rehearse`, `cost` and `thumbnail` -- the four questions about marks that have not been made yet -- and the looking tools hand the picture back inline, so the loop the guide asks for (look every five to fifteen strokes) costs one call.\n\nCall `guide` before painting. It returns the method, which matters more than the tool list, and the guide ships inside the package so there is nothing to go and find. When a rehearsal comes back wrong, `diagnose` takes a description of what you can see and returns the passage that measured it; `demo` paints a recipe beside its commonest failure.",
+  "description": "A headless painting and drawing engine for AI agents: brushes, paint load, wet blending, graphite.",
+  "long_description": "Easel is a painting engine, not a drawing API. A brush carries a finite load of paint that runs out along the stroke, picks up what is already wet on the canvas, and drags against the tooth of the ground. The tools are the eighteen CLI verbs plus `preview`, `rehearse`, `cost` and `thumbnail` -- the four questions about marks that have not been made yet -- and the looking tools hand the picture back inline, so the loop the guide asks for (look every five to fifteen strokes) costs one call. The same engine draws: `new` with `medium` set to `graphite` starts a drawing in pencil, six grades on paper with tooth, and `film` plays it back a mark at a time with the painter's own looks held where they were taken.\n\nCall `guide` before painting -- with `document` set to `draftsman` for a drawing. It returns the method, which matters more than the tool list, and the guide ships inside the package so there is nothing to go and find. When a rehearsal comes back wrong, `diagnose` takes a description of what you can see and returns the passage that measured it; `demo` paints a recipe beside its commonest failure.",
   "author": {
     "name": "Arie Hofland",
     "url": "https://github.com/Gemberkoekje"
@@ -35,13 +35,13 @@
     "paintings_dir": {
       "type": "directory",
       "title": "Paintings directory",
-      "description": "Where .easel session files, looks and exported PNGs are written. Every tool takes a path relative to this, so a painting stays where you put it rather than wherever the client happened to start.",
+      "description": "Where .easel session files, looks, exported PNGs and films are written. Every tool takes a path relative to this, so a painting stays where you put it rather than wherever the client happened to start.",
       "required": true,
       "default": "${HOME}/Documents"
     }
   },
   "tools_generated": true,
-  "keywords": ["painting", "paint", "brush", "canvas", "art", "mcp"],
+  "keywords": ["painting", "paint", "brush", "canvas", "drawing", "graphite", "pencil", "art", "mcp"],
   "license": "MIT",
   "compatibility": {
     "platforms": ["darwin", "linux", "win32"],

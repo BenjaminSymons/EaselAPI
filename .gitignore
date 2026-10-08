@@ -19,8 +19,10 @@ venv/
 # live in it, and the scripts rebuild the log but not those.
 !drawings/**/*.easel
 # A drawing's viewer is a few hundred frames and rebuilds from the session file in
-# under a minute (`easel film drawing.easel --html viewer`); the MP4 is kept.
+# under a minute (`easel film drawing.easel --html viewer`); the MP4 is kept. The
+# looks its warm-up exercises write regenerate from the ex_*.py scripts beside them.
 drawings/**/viewer/
+drawings/**/ex_out/
 out/
 output/
 samples/*.png

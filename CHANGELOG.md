@@ -133,6 +133,47 @@ reasoned causes did not survive measurement; what the run asks of `DRAFTSMAN.md`
 the engine is listed at the end of its `NOTES.md`. One fix came out of it: the film fell
 over on a look captured with a cell's name as its region.
 
+**Step 6, run 2: the drawing that counts.** `drawings/egg_in_bowl_2/`: the same words
+as the shakedown and a different seed, drawn by a fresh session against `DRAFTSMAN.md`
+as committed at `75c82fd`, in 138 of 400 marks, with its passes, its nine exercises,
+its session file, its two films and its notes, re-measured. Seven of the spec's eight
+criteria met against the shakedown's six: the darks passed by a margin once laid last
+and unstumped, every planned place read within `0.10`, and the one that still fails is
+the look gap, down from 66 marks to 21 and past the guide's fifteen -- which the check
+fires at 30, so the rule was broken once and nothing said so. Of the shakedown's seven
+candidate rules six held and one half held. What this run asks of the guide (seven
+candidates) and of the check (five) is listed at the end of its `NOTES.md`, each a
+hypothesis until a third session draws against it; nothing has been built from it.
+
+**Step 7: the server, and the tidy.** The medium reaches a client that speaks MCP, and
+the spec's last step closes.
+
+- `film`, a tool: `easel film` through the server -- the MP4, GIF or PNG frames, the
+  viewer under `html`, or both -- handing back the paths it wrote, since a film is not
+  a picture a tool can return inline. Every CLI verb is a tool again: `film` had been
+  the one verb without one since step 4, and the test that holds the two lists
+  together had no `mcp` extra to run against here.
+- `new` takes `medium` and `capture`, as `easel new` does, and its `texture` left off
+  follows the medium -- linen for paint, cartridge for graphite -- where it was linen
+  whatever the medium. The second test drawing was started from the shell for want of
+  this. Its reply names the medium, as the shell's does.
+- `look` through the server follows the medium when `values` is left off, as the
+  library does: it passed `values=false`, so a drawing looked at over MCP came back in
+  colour.
+- The plan a client sends `preview`, `rehearse` and `cost` carries the pencil's kinds:
+  a mark with `grade` is a `line`, `hatch`, `scribble` and `contour` name their place,
+  and a bare run of points is a line in a drawing and a stroke in a painting, as the
+  library's own plan reads it -- the path is handed on bare for the engine to read by
+  its medium. The echo names the drawing's verb, and the quoted price is what the echo
+  pays, with a test per kind.
+- What the engine says it is: *a headless painting and drawing engine*, in
+  `pyproject.toml`, `server.json` and the desktop bundle's manifest, with `drawing`,
+  `graphite` and `pencil` among its keywords; the server's instructions and its plan
+  grammar name the medium. The README has a section on it, with the sampler and the
+  test drawings; `llms.txt` points at the second drawing's notes; `REFERENCE.md`'s
+  server page names the new tool and arguments, and counts seven documents where it
+  counted six.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with

@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -747,7 +748,8 @@ def test_the_plan_help_names_every_kind_and_the_film():
     """The grammar a client reads is `_PLAN_HELP`, quoted by preview, rehearse and cost."""
     from easel.mcp_server import _PLAN_HELP
 
-    for key in ("'points'", "'shape'", "'edge'", "'band'", "'cover'", "'glaze': true"):
+    for key in ("'points'", "'shape'", "'edge'", "'band'", "'cover'", "'glaze': true",
+                "'grade'", "'hatch'", "'scribble'", "'contour'"):
         assert key in _PLAN_HELP, key
     assert "whole pass is a plan" in _PLAN_HELP
 
@@ -842,3 +844,137 @@ def test_the_plan_tool_declares_what_the_check_then_holds_the_painting_to(call, 
     # A key, as the other routes declare it (0.8.0 E1).
     assert "key: low" in call("plan", session=painting, key="low").text
     assert Session.load(painting).plan().key == "low"
+
+
+# -- the drawing: the medium, the pencil's plan, and the film --------------------------
+@pytest.fixture
+def drawing(tmp_path, call):
+    """A capturing graphite session with a hatch, a line and a look in it."""
+    path = str(tmp_path / "d.easel")
+    call("new", session=path, size="480x360", seed=11, out_dir=str(tmp_path / "out"),
+         medium="graphite", capture=True, budget=60)
+    call("run", session=path,
+         script="s.hatch(cell('C3'), angle=35, grade='HB', spacing=0.03)\n"
+                "s.line([(0.1, 0.2), (0.5, 0.15), (0.9, 0.3)], '6B', pressure=0.9)")
+    call("look", session=path, grid=True)
+    return path
+
+
+def test_new_takes_the_medium_and_the_capture_and_the_paper_follows(tmp_path, call):
+    """`easel new --medium graphite --capture`, from the server. The second test
+    drawing had to be started from the shell because this tool took neither, and its
+    `texture` defaulted to linen whatever the medium, where the shell's follows it."""
+    path = str(tmp_path / "g.easel")
+    said = call("new", session=path, size="480x360", seed=3,
+                out_dir=str(tmp_path / "out"), medium="graphite", capture=True).text
+    assert "graphite" in said and "capturing" in said and "cartridge" in said
+    loaded = Session.load(path)
+    assert loaded.medium == "graphite" and loaded.capture
+    assert loaded.canvas.texture_name == "cartridge"
+    # A painting still gets linen, as it always did, and now says its medium.
+    other = str(tmp_path / "p.easel")
+    said = call("new", session=other, size="480x360", out_dir=str(tmp_path / "out")).text
+    assert "linen" in said and "paint" in said and "capturing" not in said
+    # A paper named is the paper got, in either medium.
+    third = str(tmp_path / "r.easel")
+    call("new", session=third, size="480x360", medium="graphite", texture="rough",
+         out_dir=str(tmp_path / "out"))
+    assert Session.load(third).canvas.texture_name == "rough"
+    with pytest.raises(ToolError, match="Unknown medium"):
+        call("new", session=str(tmp_path / "x.easel"), medium="charcoal")
+
+
+def test_a_drawings_look_follows_the_medium_unless_told_otherwise(call, drawing, painting):
+    """The tool passed `values=false` where the library's default follows the medium,
+    so a drawing looked at through the server came back in colour."""
+    def grey(picture) -> bool:
+        px = np.asarray(picture.convert("RGB"))
+        return bool((px[..., 0] == px[..., 1]).all() and (px[..., 1] == px[..., 2]).all())
+
+    assert grey(call("look", session=drawing).picture)
+    assert not grey(call("look", session=painting).picture)
+    assert grey(call("look", session=painting, values=True).picture)
+
+
+DRAWN_PLANS = [
+    {"points": [[0.2, 0.6], [0.5, 0.55], [0.8, 0.6]], "grade": "6B", "pressure": 0.9},
+    {"points": [[0.2, 0.3], [0.7, 0.35]], "grade": "2B", "tip": "side", "width": 0.02},
+    [[0.2, 0.6], [0.5, 0.55], [0.8, 0.6]],
+    {"hatch": "C3", "angle": 35, "grade": "HB", "spacing": 0.03},
+    {"hatch": {"blob": "D5", "radius": 0.12, "seed": 3}, "angle": [30, 120],
+     "grade": "2H", "spacing": 0.025},
+    {"scribble": {"ellipse": [0.4, 0.6], "rx": 0.2, "ry": 0.12}, "grade": "2B",
+     "density": 0.8},
+    {"contour": "D4", "grade": "2H", "pressure": 0.7},
+    {"contour": [[0.2, 0.2], [0.6, 0.15], [0.7, 0.5], [0.25, 0.55]], "grade": "4B"},
+]
+
+
+@pytest.mark.parametrize("plan", DRAWN_PLANS, ids=range(len(DRAWN_PLANS)))
+def test_a_drawings_quoted_price_is_what_its_echoed_python_pays(tmp_path, call, plan):
+    """The same promise for the pencil: priced as JSON, laid by the echo, counted off
+    the log. Every echoed line is a drawing verb, and every record laid is graphite."""
+    session = str(tmp_path / f"d{abs(hash(str(plan)))}.easel")
+    call("new", session=session, size="480x360", seed=5, out_dir=str(tmp_path / "out"),
+         medium="graphite")
+    quoted = call("cost", session=session, plan=plan)
+    price = re.search(r"^(\d+) stroke", quoted.text, re.M)
+    total = int(price.group(1))
+    script = quoted.text[price.start():].splitlines()[2:]
+    assert script and all(
+        line.startswith(("s.line(", "s.hatch(", "s.scribble(", "s.contour("))
+        for line in script), script
+    call("run", session=session, script="\n".join(script))
+    assert call_count(call, session) == total
+    assert {r.kind for r in Session.load(session).history.records} == {"graphite"}
+
+
+def test_a_bare_run_of_points_is_a_line_in_a_drawing_and_a_stroke_in_a_painting(
+        call, drawing, painting):
+    """As the library's own plan reads it: the path is handed on bare, so the engine
+    reads it by its medium, and the echo names the verb the engine will call."""
+    path = [[0.2, 0.6], [0.5, 0.55]]
+    assert "s.line([" in call("cost", session=drawing, plan=path).text
+    assert "s.stroke([" in call("cost", session=painting, plan=path).text
+    # A grade names a line in either medium, since nothing is refused.
+    assert "s.line([" in call("cost", session=painting,
+                              plan={"points": path, "grade": "HB"}).text
+
+
+def test_a_keyword_a_pencil_verb_would_refuse_is_refused_while_the_plan_is_free(
+        call, drawing):
+    with pytest.raises(ToolError, match="hatch does not take 'spacng'"):
+        call("cost", session=drawing, plan={"hatch": "C3", "spacng": 0.03})
+    with pytest.raises(ToolError, match="line does not take 'grdae'"):
+        call("cost", session=drawing,
+             plan={"points": [[0.1, 0.1], [0.5, 0.5]], "grade": "HB", "grdae": "2B"})
+
+
+def test_the_plan_help_names_the_pencils_kinds():
+    from easel.mcp_server import _PLAN_HELP
+
+    for key in ("'grade'", "'hatch'", "'scribble'", "'contour'"):
+        assert key in _PLAN_HELP, key
+
+
+def test_film_writes_the_film_and_the_viewer_and_needs_one_of_them(tmp_path, call, drawing):
+    """`easel film` through the server, which is how a drawing made over MCP hands
+    back its own time-lapse: the paths, one per line, since a film is not a picture."""
+    with pytest.raises(ToolError, match="output"):
+        call("film", session=drawing)
+    gif = tmp_path / "d.gif"
+    view = tmp_path / "view"
+    said = call("film", session=drawing, output=str(gif), html=str(view),
+                scale=120, hold_looks=0.5).text
+    assert said.splitlines() == [str(gif), str(view / "index.html")]
+    records = len(Session.load(drawing).history.records)
+    with Image.open(gif) as im:
+        # A frame per mark, the look held where it was taken, and the start and end.
+        assert im.n_frames > records
+        assert im.size[0] == 120
+    assert (view / "film.json").exists()
+    assert list((view / "frames").glob("*.png"))
+    # `every` thins the marks, and a path with no suffix is a directory of frames.
+    folder = call("film", session=drawing, output=str(tmp_path / "frames"), every=2,
+                  scale=120, hold_looks=0).text
+    assert len(list(Path(folder).glob("frame_*.png"))) < records + 2

@@ -22,7 +22,6 @@ import re
 import warnings
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from easel import GRADES, Session, cell, docs, span

@@ -11,7 +11,7 @@ name = "easel-paint"
 # purpose rather than publishing the mismatch. Running that workflow by hand
 # instead rehearses to TestPyPI, which is what a .devN version is for.
 version = "0.8.0"
-description = "A headless painting engine for AI agents: brushes, paint load, wet blending, canvas texture."
+description = "A headless painting and drawing engine for AI agents: brushes, paint load, wet blending, graphite."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
@@ -19,6 +19,7 @@ authors = [{ name = "Arie Hofland" }]
 keywords = [
     "painting", "paint", "brush", "brushes", "brush-strokes", "strokes",
     "canvas", "pigment", "raster", "art",
+    "drawing", "graphite", "pencil",
     "agent", "ai-agents", "llm", "headless",
     "mcp", "model-context-protocol",
 ]
