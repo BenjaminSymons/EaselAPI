@@ -87,7 +87,7 @@ def make_reference(path: Path) -> Path:
 
 REFERENCE = make_reference(OUT / "ref.png")
 
-DOCUMENTS = ("PAINTER.md", "PAINTING.md", "RECIPES.md")
+DOCUMENTS = ("PAINTER.md", "DRAFTSMAN.md", "PAINTING.md", "RECIPES.md")
 
 
 def guide_blocks(echo: bool = True) -> list[tuple[str, str]]:
@@ -132,7 +132,7 @@ def is_pseudo_code(block: str) -> bool:
 def runnable(block: str) -> str:
     """One block, with the placeholders a fresh reader would replace resolved."""
     src = block.replace('"ref.jpg"', repr(str(REFERENCE)))
-    for name in ("painting.png", "painting.gif"):          # the guide's export block
+    for name in ("painting.png", "painting.gif", "drawing.png"):   # the guides' export blocks
         src = src.replace(f'"{name}"', repr(str(OUT / name)))
     return src
 

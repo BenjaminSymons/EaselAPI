@@ -11,8 +11,10 @@ from __future__ import annotations
 from easel.docs import (
     CARD_WORDS,
     DOCUMENTS,
+    DRAFTSMAN_WORDS,
     FRONT_PAGE,
     FRONT_PAGE_WORDS,
+    GUIDES,
     document_path,
     front_page,
     read,
@@ -23,8 +25,10 @@ from easel.docs import (
 __all__ = [
     "CARD_WORDS",
     "DOCUMENTS",
+    "DRAFTSMAN_WORDS",
     "FRONT_PAGE",
     "FRONT_PAGE_WORDS",
+    "GUIDES",
     "document_path",
     "front_page",
     "read",

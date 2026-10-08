@@ -135,6 +135,31 @@ def test_the_film_is_a_frame_per_mark_with_the_looks_held(tmp_path):
     assert np.abs(final.astype(int) - rebuilt.astype(int)).max() <= 2
 
 
+def test_a_look_taken_without_the_grid_is_held_without_it(tmp_path):
+    """The film held every look gridded: the capture drops a false argument, and the
+    film read a missing grid as `True`. A look the painter took plain is held plain,
+    and one taken with the grid, or the fine grid, is held as taken."""
+    from easel.look import render_look
+
+    s = make(tmp_path)
+    s.line([(0.1, 0.2), (0.5, 0.15), (0.9, 0.3)], "6B", pressure=0.9)
+    s.look(grid=False)
+    s.look(grid=True)
+    s.look(grid="fine")
+    assert "grid" not in s.captures[0]["args"]
+    looks = [f for f in frames(s, every=1, scale=320, hold_looks=0.5, fps=12)
+             if f.kind == "look"]
+    assert len(looks) == 3
+    plain = np.asarray(render_look(s.canvas, scale=320, values=True, marks=None,
+                                   guides=s.guides))
+    gridded = np.asarray(render_look(s.canvas, scale=320, grid=True, values=True,
+                                     marks=None, guides=s.guides))
+    assert np.array_equal(np.asarray(looks[0].image), plain)
+    assert np.array_equal(np.asarray(looks[1].image), gridded)
+    assert not np.array_equal(np.asarray(looks[2].image), plain)
+    assert not np.array_equal(np.asarray(looks[2].image), gridded)
+
+
 def test_every_thins_the_marks_and_keeps_the_last(tmp_path):
     s = drawn(tmp_path, capture=False)
     seq = [f for f in frames(s, every=4, scale=120, hold_looks=0) if f.kind == "mark"]

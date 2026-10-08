@@ -20,6 +20,9 @@ others; `scripts/check_guide_overlap.py` says whether a sentence has crept into
 two files. `PAINTER.md` is held to :data:`FRONT_PAGE_WORDS` so that it stays the
 file a painter can hold in their head. `LESSONS.md` has the reasoning.
 
+`DRAFTSMAN.md` is the graphite medium's `PAINTER.md`, read instead of it and held to a
+budget of its own; see :data:`GUIDES`.
+
 `DIAGNOSIS.md` is a sixth file here and not a sixth guide file: it states no rule,
 it is an index of symptoms pointing at the five, and it says on its own first line
 that it is not for reading. It ships because it was written to be grepped and there
@@ -54,12 +57,20 @@ from pathlib import Path
 #: should.
 DOCUMENTS = {
     "guide": "PAINTER.md",
+    "draftsman": "DRAFTSMAN.md",
     "painting": "PAINTING.md",
     "recipes": "RECIPES.md",
     "reference": "REFERENCE.md",
     "calibration": "CALIBRATION.md",
     "diagnosis": "DIAGNOSIS.md",
 }
+
+#: The two guides -- the method for each medium -- and what else they are called.
+#: `DRAFTSMAN.md` is the graphite medium's `PAINTER.md`: the same shape, a card
+#: headed :data:`FRONT_PAGE` and the rest, written from the first test drawing's cost
+#: and held to a budget of its own (:data:`DRAFTSMAN_WORDS`). A painter reads one of
+#: the two, never both, so neither restates the other.
+GUIDES = ("guide", "draftsman")
 
 #: The heading of the section the guide means to be read on its own: the whole
 #: workflow in about 1,400 words, and enough to start. It ends where the next
@@ -107,6 +118,17 @@ FRONT_PAGE_WORDS = 6_700
 #: measured as too long. `LESSONS.md`'s growth rule applies here twice over, since
 #: anything added to the card is added to the file as well.
 CARD_WORDS = 1_400
+
+#: The ceiling on `DRAFTSMAN.md`, the graphite medium's guide, asserted by
+#: `tests/test_guide.py` as `PAINTER.md`'s is; its card is held to :data:`CARD_WORDS`.
+#: **Set before the file was written**, which is the order the fork's review asked
+#: for: a rule that enters the guide leaves nothing else, so the ceiling has to be
+#: there on the day the first rule goes in. 5,000 and not `PAINTER.md`'s 6,700,
+#: because one drawing's worth of measured rules is what there is to say, and the
+#: lesson of the painting guide is that a ceiling thousands of words above the text
+#: binds nothing. Lowered to a little over the file's own size on the day the second
+#: drawing is measured against it, if the file comes in well under.
+DRAFTSMAN_WORDS = 5_000
 
 _PACKAGED = Path(__file__).resolve().parent / "docs"
 _CHECKOUT = Path(__file__).resolve().parents[2]
@@ -246,16 +268,18 @@ def section(name: str, heading: str, text: str | None = None) -> str:
     return body + "\n"
 
 
-def front_page() -> str:
+def front_page(name: str = "guide") -> str:
     """`The first hour` on its own: the whole method, and enough to start.
 
+    Of `PAINTER.md`, or of `DRAFTSMAN.md` with ``name="draftsman"``: the two guides
+    share the card's heading, and a drawing's first hour is the one a draftsman reads.
     Falls back to the entire guide if the heading has been renamed, on the
     grounds that too much of the right document beats an empty page.
     """
     try:
-        return section("guide", FRONT_PAGE)
+        return section(name, FRONT_PAGE)
     except KeyError:
-        return read("guide")
+        return read(name)
 
 
 def write(text: str) -> None:

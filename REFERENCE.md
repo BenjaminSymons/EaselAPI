@@ -217,7 +217,10 @@ Consecutive passes of a mass run in **opposite** directions, so that a stack doe
 stack all its run-out along one edge. The pressure profile does not go with them: a
 list, or an asymmetric named profile, is read in **canvas order** on every pass, so
 `pressure=[0.0, 1.0]` across a `block_in`, `scumble` or `sweep` lands light at one side
-of the place and heavy at the other, once, rather than alternating.
+of the place and heavy at the other, once, rather than alternating. **A mark laid by
+hand reads its list along itself**: `stroke()` and `line()` run the list from the first
+point to the last, so a row laid right to left wants its list turned round, which
+`hatch` and `tone` do for their own flipped passes.
 
 | Tip family | What pressure changes |
 |---|---|
@@ -476,6 +479,32 @@ white — `g × (0.03 + 0.25 g)` of what was there stays, so a dark soft mark le
 than a light hard one — and a second pass lifts again from what is left. Neither
 eraser burnishes; the plastic eraser's burnish is measured before it is built.
 
+**What the check says of a drawing.** `report()` and `checklist()` read a drawing with
+the ten rules and the standing lines under `report()` below, and five things read
+differently. The spec proposed seven standing warnings for the medium; each was measured
+on the first drawing's log before anything was built, and these are what fired
+(*The check, measured on the first drawing* in `CALIBRATION.md`). **One rule of the
+drawing's own**, read off where the painter looked rather than off the log, since a look
+is not a record:
+
+| It says, of a drawing | when |
+|---|---|
+| *no look between them* | `30` or more marks are laid with no look or rehearsal between any two of them — twice the loop's upper bound. Over a pass the run is the pass's; over the whole drawing, the longest anywhere. A painting is not asked |
+
+And four lines that read the medium: `values:` names the box of pencils on this paper,
+the paper's value times what a `6B` leaves and the paper itself, rather than the box of
+paints; `paper:` stands in for `ground:`, as the share of the sheet the channel has never
+touched, exact where the ground line is a tolerance; `lightest:` carries the share of the
+named light that is paper never touched (*; 49% of it paper never touched*, or *none of
+it — a highlight lifted is a value, not the paper*); and `pencil:` names the envelope.
+In the closing checklist only, `darks:` says how far the darkest half-percentile reached
+from the paper toward black, against `0.80` — the acceptance criterion, which the first
+drawing finished under at `0.73`. The stack-of-bars line gives a drawing the drawing's
+remedy: rows at two angles twenty degrees or more apart, and the stump. Not built,
+because the first drawing's log could not fire them: one grade for the whole drawing
+(five were used, and the one-brush rule already reads a grade at a width), a place
+erased more than twice, and erasures above a tenth of the marks (two of 155).
+
 ---
 
 ## Looking, planning, measuring
@@ -617,8 +646,10 @@ script.
 | `values:` | the 5th to 95th percentile of the values view against what the palette reaches, and the three clusters it splits into | after every pass; it says so when the range stays on one side of the box's middle or two clusters sit under `0.10` apart — or, under a declared `key=`, whether the picture has kept it |
 | `edges:` | the share of the picture's edges under `2.5` px wide | after every pass |
 | `ground:` | the share of the canvas that is **still bare ground** | after every pass; it says so under `0.5%` |
-| `pencil:` | graphite still showing | left off once there is none |
+| `paper:` | in a drawing, in place of `ground:`: the share of the sheet that is **paper never touched**, read off the graphite channel | after every pass of a drawing; it says so under `0.5%` |
+| `pencil:` | graphite still showing; in a drawing, how much of the envelope still shows | left off once there is none |
 | `boxes:`, `unspent:` | the masses laid in a rectangle, and what is left of the budget | in the closing checklist only |
+| `darks:` | in a drawing, how far the darkest half-percentile reached from the paper toward black, against `0.80` | in the closing checklist only |
 
 Their thresholds are under *The measurement lines, on the finished canvases* in
 `CALIBRATION.md`. All of them count the painting behind a rehearsal copy, not the copy's
@@ -817,7 +848,9 @@ easel film p.easel out.mp4 [--fps 12] [--every 1] [--scale 720] [--hold-looks 1.
 easel check p.easel [--subject-share 0.32]
 easel log p.easel [-n 20] [--check | --reports]
 easel brushes
-easel guide [--full | --painting | --recipes | --reference | --calibration | --diagnosis] [--path]
+easel guide [--full] [--draftsman | --painting | --recipes | --reference | --calibration | --diagnosis] [--path]
+                                              # --draftsman: DRAFTSMAN.md, the graphite
+                                              # medium's guide; its card, or --full
 easel explain [code]
 easel diagnose [what you can see ...] [--list]
 easel demo [recipe ...] [--out-dir out] [-o sheet.png]

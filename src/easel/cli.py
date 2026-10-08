@@ -369,9 +369,12 @@ def build_parser() -> argparse.ArgumentParser:
                     "With no arguments: `The first hour`, which is the whole "
                     "method in about 1,400 words and enough to start.",
     )
-    g_which = p_guide.add_mutually_exclusive_group()
-    g_which.add_argument("--full", action="store_true",
+    p_guide.add_argument("--full", action="store_true",
                          help="the whole guide, not just its first page")
+    g_which = p_guide.add_mutually_exclusive_group()
+    g_which.add_argument("--draftsman", action="store_true",
+                         help="DRAFTSMAN.md instead: the graphite medium's method -- its "
+                              "first page, or the whole of it with --full")
     g_which.add_argument("--painting", action="store_true",
                          help="PAINTING.md instead: how the paint and the brushes behave, read once")
     g_which.add_argument("--recipes", action="store_true",
@@ -458,7 +461,8 @@ def _cmd_guide(args) -> int:
     is the half of this project that the measured runs say matters. So it is in
     the package, and this is how it is read without leaving the shell.
     """
-    name = ("painting" if args.painting
+    name = ("draftsman" if args.draftsman
+            else "painting" if args.painting
             else "recipes" if args.recipes
             else "reference" if args.reference
             else "calibration" if args.calibration
@@ -469,7 +473,9 @@ def _cmd_guide(args) -> int:
         print(docs.document_path(name))
         return 0
 
-    text = docs.read(name) if (args.full or name != "guide") else docs.front_page()
+    # Either guide prints its card unless the whole is asked for; the rest print whole.
+    text = (docs.read(name) if (args.full or name not in docs.GUIDES)
+            else docs.front_page(name))
     docs.write(text)
     return 0
 

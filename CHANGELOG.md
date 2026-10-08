@@ -96,6 +96,34 @@ stream, and nothing new takes an index.
 - `Session.replay()` builds its fresh session through `_fresh_session`, which the film
   shares. Nothing about a rebuild moved.
 
+**Step 5: `DRAFTSMAN.md`, and what the check says of a drawing.** The graphite
+medium's guide, written after the shakedown and from what it cost, in the shape of
+`PAINTER.md` -- the card, the order of work for a pencil, the six mistakes, nine
+exercises, the closing checklist -- and held to a budget of its own (`DRAFTSMAN_WORDS`,
+set before the file was written), to the card's budget, to the block checker, the
+overlap checker, the cp1252 console and the links test, like the other six. `easel guide
+--draftsman`, `guide(document="draftsman")` through the server, and the wheel ships it.
+The spec's seven standing warnings for the medium were each measured on the shakedown's
+log before anything was built (`CALIBRATION.md`, *The check, measured on the first
+drawing*), and what fired is what was built:
+
+- a finding of the drawing's own: `30` or more marks laid with no look or rehearsal
+  between them. A look is not a record, so where the painter looked is kept beside the
+  log (`Session._looked`, saved as `looked`; a file from before reads its captures);
+- `values:` names the box of pencils on this paper; `paper:` stands in for `ground:` as
+  the share of the sheet the channel has never touched; `lightest:` carries the share of
+  the named light that is paper never touched; `pencil:` names the envelope; and the
+  closing checklist prints `darks:`, how far the darkest half-percentile reached from the
+  paper toward black, against `0.80`;
+- the stack-of-bars line gives a drawing the drawing's remedy.
+
+Not built, because the log could not fire them: one grade for the whole drawing, a place
+erased more than twice, erasures above a tenth of the marks. `REFERENCE.md` says that a
+hand-laid `line()` or `stroke()` reads a pressure list along itself. **The film held
+every look gridded**: the capture drops a false `grid`, and the film read its absence as
+`True`; a look taken plain is held plain now, with a test. Each test drawing keeps two
+films beside its session file, the looks held and the marks alone.
+
 **Step 6, run 1: the shakedown drawing.** `drawings/egg_in_bowl/`: a hen's egg in a
 shallow bowl, drawn by a fresh session from `REFERENCE.md`, `PAINTER.md` and
 `CALIBRATION.md` alone -- there is no drawing guide yet -- in 154 of 400 marks, with its

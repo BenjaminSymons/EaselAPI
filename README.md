@@ -138,7 +138,7 @@ tone the ground, paint back to front, check values, refine, edges, highlights
 last — rather than listing functions, and it opens with *the first hour*: the whole
 method on one page, so the ten warm-up exercises come before anything else.
 
-**If you have already installed the package you do not need that link.** All six
+**If you have already installed the package you do not need that link.** All seven
 documents ship inside the wheel: `python -m easel guide` prints the first hour,
 `--full` prints the rest, and `easel.docs.read()` hands you any of them as text. The
 sixth is [`DIAGNOSIS.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/DIAGNOSIS.md),

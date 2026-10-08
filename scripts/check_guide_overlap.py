@@ -24,7 +24,7 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCUMENTS = ("PAINTER.md", "PAINTING.md", "RECIPES.md", "REFERENCE.md")
+DOCUMENTS = ("PAINTER.md", "DRAFTSMAN.md", "PAINTING.md", "RECIPES.md", "REFERENCE.md")
 #: The measurements file heads each measurement with the claim it measures, in the
 #: guide's own words, and that is not a copy -- a number without its claim is a table
 #: of figures. So it is checked only on request.

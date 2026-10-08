@@ -38,6 +38,7 @@ their own sessions rather than measurements of the engine.
 | The engine lays the chroma it is given, never more | *Chroma: the engine lays what it is given* |
 | A mass reads the same in the view as in the paint | *The paint and the view of it* |
 | Paint buries graphite by what lands; `density` does not thin | *Graphite under paint* |
+| A grade's floor is its ceiling; an even tone is a hard grade leant on; a stump lightens what the check reads; an eraser leaves a ghost; what the check measured on the first drawing | *The graphite medium*, *The stump and the erasers*, *The check, measured on the first drawing* |
 | Wet is a matter of a few strokes | *Wetness* |
 | `density` spaces the passes; `solid` fills them; a solid plane still stripes at `0.03` | *Load and run-out* |
 | A mass never stops dead at its outline; `overhang` moves the ends only | *`block_in`* |
@@ -384,8 +385,83 @@ function of the local darkness and nothing else — the softest grade present is
 held per pixel, and the dark marks are the soft ones — so a `6B` passage lifted hard
 reads `0.74` where an `HB` one reads `0.89`, and either lifted twice is within three
 hundredths of the paper. That second number is the rule for the guide: *a highlight is
-paper never touched*; a highlight lifted is a value, and the check's *erased more than
-twice* line (step 5) is where it will be measured on a drawing.
+paper never touched*; a highlight lifted is a value, and whether a drawing erased into
+its light is measured on the channel, below.
+
+### The check, measured on the first drawing
+
+`SPEC.md` proposed seven standing warnings for the medium before any drawing existed,
+and `LESSONS.md` says a check earns its line by firing on a real pass. So each was
+measured on the first test drawing's log (`drawings/egg_in_bowl/drawing.easel`: 170
+records, 155 charged, seven committed passes, 72 looks and rehearsals captured) before
+anything was built, with `Session.load` and the session's own readers; the guide was
+written from the same numbers. What each one measured, and what was done:
+
+| Proposed | Measured on the log | Built as |
+|---|---|---|
+| one grade for the whole drawing | five grades (`2H` 43, `HB` 71, `2B` 20, `4B` 5, `6B` 3 lines); the dearest pass, the ground, used two (`2H` 16, `HB` 48). The one-brush rule reads a graphite record's grade as its brush and its width as its size, so one grade at one width for a pass is already a finding | nothing |
+| hatching at one angle everywhere | the stack-of-bars rule fired on the ground pass -- *44 of 62 long marks within 6 degrees of horizontal, from 44 calls*: rows at `0` and `9` degrees, which sit inside one window -- and the draftsman declared `bands="subject"` in pass 6, after which the line counted *91 long marks, 9 crossing*. A rule that fires on a drawing's planes is right about the comb and wrong about the method unless it says the method | the same rule, with the drawing's remedy: rows at two angles twenty degrees or more apart, closed by the stump |
+| no range of edge hardness | `edges:` read `31%` under `2.5` px, median `4.2` px, inside the paint corpus's range | nothing; the line stands |
+| darkest value under `0.70` of the way to black by the end | the darkest half-percentile read `0.255` on paper at `0.957`: `0.73` of the way, with `0.06%` of the canvas under the criterion's `0.191` and the darkest graphite laid at `0.913` of a `6B`'s ceiling before it was stumped and lifted. The proposed warning at `0.70` would not have fired; the acceptance criterion at `0.80` did, and is the one the run was failed on. The `values:` line said *a clear light, mid and dark* against either box, because its 5th percentile, `0.37`, is under the box's middle whichever box | `darks:` in the closing checklist, against `0.80`; and `values:` names the grade box, `0.04` to `0.96` on this paper, rather than the paints' |
+| a place erased more than twice | two lifts of 155 marks, over different places, overlapping nowhere | nothing |
+| ghost residue or burnish inside the lightest planned place | the named light read `0.953` as a place and `0.961` at its brightest twentieth, with `49.2%` of it paper never touched (`graphite == 0`). Read off the records instead -- every stump's and lift's cover rebuilt and intersected with the place -- **the second pass's stump over the whole near plane covered 100% of the light**, when the light was bare paper and the stump moved nothing into it; the stumps that did reach it were the shade's own (`45.6%`, `17.2%`, `4.4%` of the place) and a lift of the floor beside it (`0.6%`). A rule on the records fires on a stump that touched nothing; the channel does not | the share of the named light that is paper never touched, on the `lightest:` line |
+| erasures above a tenth of the marks | two of 155, `1.3%` | nothing |
+
+And two the run asked for that the spec did not:
+
+- **A run of marks with no look between them.** A look is not a record: `look` is a kind
+  in `History.UNPAINTED_KINDS` and nothing lays one, so the looks are kept beside the log
+  (`Session._looked`, the log's length at each look and rehearsal). By the rule's own
+  count, the seven committed passes' longest runs were **66, 13, 20, 4, 16, 3 and 2**
+  marks with rehearsals counted as looks, and 66, 18, 27, 11, 32, 3 and 2 with looks
+  alone. The 66 is the ground pass, the one the round's re-measurement failed on the
+  spec's *every fifteen* and the one the draftsman named as its weakest. The line is set
+  at `30`, twice the loop's upper bound: at fifteen it fires on three passes of seven,
+  and the one pass it is right about is the one a painter would have stopped reading
+  it on. Rehearsals count, as the re-measurement counted them. Built as a finding of the
+  drawing's own; a painting is not asked, since a paint recipe lays thirty marks between
+  looks as a matter of course and the rule has not been measured on paint.
+- **`ground:` against paper never touched.** `ground_showing` reads the composite within
+  `10/255` of a bare canvas, which admits graphite up to about `0.02`: the drawing read
+  `5.35%` bare ground and `4.12%` paper the channel holds nothing at (`4.17%` under
+  `1e-6`), and inside the named light `57.8%` against `49.2%`. The `paper:` line reads the
+  channel, exact, in place of `ground:` in a drawing.
+
+What else the log measured, quoted in `DRAFTSMAN.md`:
+
+- **What a plane costs.** `tone(cell, 0.36, "2B")` lays 10 lines; `hatch(cell,
+  tip="side")` 10; `hatch(cell)` with the point 15. The ground was laid by hand as side
+  rows at `width=0.07`: 16 strokes for the far plane (`2H` at `[0.55, 0.80]`, read
+  `0.716` before its stump and `0.711` after) and 48 for the near one (`HB` at `[0.55,
+  0.72]` and `0.60`, read `0.51` to `0.55` either side of its stump), one stump each at
+  `1.0`.
+- **The holes.** One side hatch of a cell on fresh paper leaves bare paper (`graphite
+  < 0.03`) over `18%` of the cell with `HB` at `0.5`, `4%` with `2B` at `0.5`, `2%` with
+  `2H` at `1.0`, and none with `HB` at `0.9`. The draftsman's `44%` was `sample-split`'s
+  reading of a bimodal cell, not the bare share.
+- **The stump's two numbers.** On a `tone()`d patch a stump at full strength moves the
+  mean `+0.02` and the median `+0.11`; on the draftsman's hand-laid rows the mean
+  `+0.02` and the median **`+0.06`**. `compare()`, the plan's lines and `tone()` read the
+  median. The draftsman read means through `sample()` and concluded the stump did not
+  move the planes; it had moved what the check reads by six hundredths.
+- **A lift takes the whole place.** A `kneaded` over the floor polygon lifted the cast
+  shadow lying inside it by `0.29`; caught in rehearsal and confined by a smaller place.
+- **A silhouette of two shapes** laid as one shape's arc over the top and the other's
+  under left a `38` px notch of paper at each side, where the outer shape changes from
+  one to the other; a ray-cast outline of the union, one closed run, laid it whole.
+- **A one-point `line()`** lands `0.26` of a unit at the point's width (record 167):
+  under the `landed nothing:` line.
+- **The signature's dot** is a two-point tick for the same reason.
+- **The loop's signature** fired once, on six `2B` arcs of one ellipse scaled inward,
+  stepping in length and evenly spaced (records 88-93): a cast shadow laid as arcs of its
+  own shape, which is the passage the guide now recommends. One firing on a questionable
+  passage is not a measurement of the rule; it stands, and the guide says to vary the
+  spacing of such arcs a little.
+- **The film held every look gridded.** The capture drops a false argument, and the film
+  read a missing grid as `True`; a look the draftsman took plain was held with the grid
+  drawn over it. Fixed in the fork's fifth step, with a test, and both of the drawing's
+  films re-rendered: `drawing_looks.mp4` with the looks held, `drawing_strokes.mp4` the
+  marks alone.
 
 ---
 

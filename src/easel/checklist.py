@@ -38,8 +38,9 @@ import numpy as np
 
 from easel.measure import VALUE_THRESHOLD
 
-__all__ = ["values_line", "edges_line", "pencil_line", "boxes_line", "unspent_line",
-           "clusters", "mass_counts", "HARD_EDGE_PX", "PENCIL_STEP", "UNSPENT_SHARE"]
+__all__ = ["values_line", "edges_line", "pencil_line", "paper_line", "darks_line",
+           "boxes_line", "unspent_line", "clusters", "mass_counts", "HARD_EDGE_PX",
+           "PENCIL_STEP", "UNSPENT_SHARE", "DARKS_REACH"]
 
 #: An edge narrower than this reads as hard. **Not two pixels**, which is where the
 #: plan's prototype put it and is the one number in workstream E that had to move:
@@ -72,6 +73,18 @@ PENCIL_STEP = 2
 #: 0.5.0 cohort stopped under 45% spent, at a median of 42%; **none of the thirteen
 #: budgeted paintings before them did**, at a median of 86%.
 UNSPENT_SHARE = 0.33
+
+#: How far from the paper toward black a drawing's darks reach by the end, as the
+#: share of the way: `SPEC.md`'s own criterion for the test drawing, and the one the
+#: first drawing failed. Its darkest half-percentile read ``0.255`` on paper at
+#: ``0.957`` -- ``0.73`` of the way -- with its darkest mark laid at ``0.913`` of a
+#: ``6B``'s ceiling and then stumped and lifted lighter (`CALIBRATION.md`, *The check,
+#: measured on the first drawing*). The spec's standing warning put the line at
+#: ``0.70``, which that drawing would have passed; the criterion is the stricter and
+#: is what the run was measured against, so it is the one printed. A closing line
+#: and not a pass line: the method lays the darks last, so after any earlier pass
+#: the answer is *not yet* and nobody needs telling.
+DARKS_REACH = 0.80
 
 
 def clusters(flat: np.ndarray, k: int = 3, rounds: int = 25) -> np.ndarray:
@@ -303,7 +316,7 @@ def edges_line(view: np.ndarray) -> str:
             f"median {float(np.median(rise)):.1f} px")
 
 
-def pencil_line(with_sketch: np.ndarray, without: np.ndarray) -> str:
+def pencil_line(with_sketch: np.ndarray, without: np.ndarray, drawing: bool = False) -> str:
     """Graphite still showing, as a share of the canvas.
 
     The checklist's own question -- *is there pencil still showing where you did not
@@ -316,13 +329,65 @@ def pencil_line(with_sketch: np.ndarray, without: np.ndarray) -> str:
     share of the drawing still uncovered: what a painter sees is the canvas with the
     pencil on it against the same canvas without.
 
+    **In a drawing the pencil is the envelope**, the free underdrawing laid before the
+    picture's own graphite, and *graphite showing* would name the picture. So the line
+    says what it is there: the envelope, which the export leaves out on request.
+
     Args:
         with_sketch: the canvas as 8-bit values, graphite composited in.
         without: the same canvas, graphite left out.
+        drawing: the session's medium is graphite, so the pencil is the envelope.
     """
     moved = np.abs(np.asarray(with_sketch, dtype=np.int16)
                    - np.asarray(without, dtype=np.int16)) > PENCIL_STEP
+    if drawing:
+        return (f"pencil: the envelope still shows over {float(moved.mean()):.2%} of the "
+                f"canvas -- export(sketch=False) leaves it out")
     return f"pencil: {float(moved.mean()):.2%} of the canvas still has graphite showing"
+
+
+def paper_line(untouched: float, floor: float) -> str:
+    """Paper never touched, as a share of the canvas: a drawing's ``ground:`` line.
+
+    A painting's ground line reads the composite against a bare canvas within a
+    tolerance, and in a drawing that tolerance admits graphite up to about ``0.02``:
+    the first drawing read ``5.35%`` *still bare ground* with ``4.17%`` of its paper
+    never touched. The two are different questions, and a drawing asks the second --
+    the guide's rule is that a highlight is paper never touched, and the channel
+    knows exactly where that is (``graphite == 0``), which no tolerance does.
+
+    Args:
+        untouched: the share of pixels with no graphite at all, ``0..1``.
+        floor: :data:`easel.session._GROUND_FLOOR`, under which the line says so.
+    """
+    line = f"paper: {untouched:.2%} of the canvas is paper never touched"
+    if untouched < floor:
+        line += f" -- under {floor:.1%}, and a highlight is paper never touched"
+    return line
+
+
+def darks_line(view: np.ndarray, paper: float) -> str:
+    """How far toward black a drawing's darks reach, against :data:`DARKS_REACH`.
+
+    Read at the darkest half-percentile of the values view, as the drawing's probe
+    reads it: one 6B line of a few hundred pixels does not make a dark, and the
+    darkest twentieth would miss a small cast shadow that is the picture's black. Said
+    as the share of the way from the paper's own value to black, which is the unit a
+    grade's ceiling is written in, so the number beside the box's reach is the number
+    the grade table promises.
+
+    Args:
+        view: the canvas as values, ``0..1``, the drawing in.
+        paper: the paper's bare value, ``0..1``.
+    """
+    darkest = float(np.percentile(np.asarray(view, dtype=np.float32).reshape(-1)[::17], 0.5))
+    way = 0.0 if paper <= 0.0 else float(np.clip((paper - darkest) / paper, 0.0, 1.0))
+    line = (f"darks: the darkest half-percentile reads {darkest:.2f}, {way:.2f} of the way "
+            f"from paper to black")
+    if way < DARKS_REACH:
+        line += (f" -- under {DARKS_REACH:.2f}, which a 2B at full pressure twice, a 4B "
+                 f"once or a 6B at half pressure reaches, laid last and left unstumped")
+    return line
 
 
 def mass_counts(records) -> tuple[int, int]:

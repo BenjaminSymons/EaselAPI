@@ -205,13 +205,17 @@ def frames(session, every: int = 1, scale: int | None = 720, stroke_motion: bool
                 img = _letterbox(im, size)
             yield Frame(finish(img, label + " (not laid)"), at, kind, None, label, hold)
             return
-        grid = args.get("grid", True)
+        # The capture keeps the look's own arguments and drops the false ones, so a
+        # grid that is not there was `grid=False`: the held frame is what the painter
+        # saw, gridded only when they asked. It forced the grid on until the fork's
+        # fifth step, which turned every plain look into a gridded frame.
+        grid = args.get("grid", False)
         region = args.get("region")
         # A captured region is a cell's name or four bounds; either is a place.
         crop = None
         if region:
             crop = as_region(region if isinstance(region, str) else tuple(region))
-        img = render_look(fresh.canvas, scale=max(size), grid=grid if grid else True,
+        img = render_look(fresh.canvas, scale=max(size), grid=grid,
                           values=bool(args.get("values", values)),
                           region=crop,
                           sketch=bool(args.get("sketch", True)),

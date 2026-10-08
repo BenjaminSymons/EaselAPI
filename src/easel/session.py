@@ -252,6 +252,12 @@ class Session:
         # span of the log it laid, and the line each of its marks was laid from.
         self._captures: list[dict] = []
         self._passes: list[dict] = []
+        # And where the painter looked, whether or not the session captures: the
+        # log's length at every look and rehearsal, in the painting's own numbering.
+        # What the drawing's one rule of its own reads -- a run of marks with no look
+        # between them -- since a look is not a record (`History.UNPAINTED_KINDS` names
+        # the kind and nothing lays one). Beside the log for the notices' reason.
+        self._looked: list[int] = []
         if texture is None:
             texture = "cartridge" if self.medium == "graphite" else "linen"
         self.seed = int(seed)
@@ -3152,7 +3158,12 @@ class Session:
         canvas the painter was looking at. The file is kept by name only: it is in
         ``out_dir`` already, and the film re-renders the view from the rebuilt canvas
         rather than reading it back, so a look whose PNG has gone still plays.
+
+        The look's place in the log is kept whether or not the session captures
+        (:attr:`_looked`): the check's *no look between them* reads it, and a drawing
+        that keeps no film still looks.
         """
+        self._looked.append(int(self._index_base + len(self.history.records)))
         if not self.capture:
             return
         plain = {}
@@ -4112,6 +4123,7 @@ class Session:
         trial.capture = self.capture
         trial._captures = []
         trial._passes = []
+        trial._looked = []
         # A separate generator holding this one's current state. `block_in` and
         # `sweep` draw their pass wander from here, so a copy of the state is what
         # makes a rehearsed mass the same mass, pixel for pixel, when it is painted
@@ -5176,6 +5188,11 @@ class Session:
             banding=None if since is None else self._banding_wanted(paid),
             bands=self._plan.bands, whole=since is None, named=self._marks_named,
         )
+        # The drawing's own rule, which reads the looks beside the log and not the
+        # marks in it: over the pass, or over the whole drawing when asked whole.
+        gap = self._look_gap_finding(records[start:])
+        if gap:
+            findings.append(gap)
         # One reading of the canvas for everything below that looks at it. A counted
         # copy has laid no paint on the canvas it borrowed, so it takes none.
         without = self.canvas.values(sketch=False) if paid and not self._counting else None
@@ -5218,7 +5235,7 @@ class Session:
                                             or self._plan.lightest is not None):
             plan_view = self._value_view()
             for line in (self._plan.value_line(plan_view),
-                         self._plan.lightest_line(plan_view)):
+                         self._plan.lightest_line(plan_view, paper=self._lightest_paper())):
                 if line:
                     lines.append(f"  {line}")
         subject = self._subject_line(paid, subject_share)
@@ -5527,6 +5544,9 @@ class Session:
         findings = _pass_findings(marks, 0, self.canvas, banding=None,
                                   bands=self._plan.bands, whole=True,
                                   named=self._marks_named)
+        gap = self._look_gap_finding(records)
+        if gap:
+            findings.append(gap)
         lines += [f"  - {line}" for line in findings]
         # Every mark of the painting that laid no paint, as `report()` says it over the
         # painting: the same line, so the two never disagree about one mark.
@@ -5539,7 +5559,7 @@ class Session:
                                             or self._plan.lightest is not None):
             plan_view = self._value_view()
             for line in (self._plan.value_line(plan_view),
-                         self._plan.lightest_line(plan_view)):
+                         self._plan.lightest_line(plan_view, paper=self._lightest_paper())):
                 if line:
                     lines.append(f"  {line}")
         subject = self._subject_line(paid, subject_share)
@@ -5548,6 +5568,10 @@ class Session:
         if paid and not self._counting:
             lines += [f"  {one}" for one in self._canvas_lines(plan_view=plan_view)]
         lines.append(f"  {checklist.boxes_line(*checklist.mass_counts(records))}")
+        # A drawing's darks come last by the method, so where they reached is a
+        # closing question and not a pass's: beside the boxes and the budget.
+        if paid and not self._counting and self.medium == "graphite":
+            lines.append(f"  {checklist.darks_line(self._value_view(), self._paper_value())}")
         lines.append(f"  {checklist.unspent_line(self.spent, self.budget)}")
         lines.append("")
         lines.append("three this cannot answer, and they are the ones to answer slowly:")
@@ -5621,6 +5645,13 @@ class Session:
         document and a tool drift apart, which is the whole argument of
         :mod:`easel.notices` applied to a line that is not a notice.
         """
+        if self.medium == "graphite":
+            # A drawing asks a different question of the same floor: not how much is
+            # within a tolerance of bare, which admits graphite up to about 0.02, but
+            # how much the channel has never touched, which is where a highlight can
+            # still be the paper. `CALIBRATION.md`, *The check, measured on the first
+            # drawing*: 5.35% against 4.17% on the same canvas.
+            return checklist.paper_line(self._paper_untouched(), _GROUND_FLOOR)
         bare = self.canvas.ground_showing()
         line = f"ground: {bare:.2%} of the canvas is still bare ground"
         if bare < _GROUND_FLOOR:
@@ -5664,7 +5695,7 @@ class Session:
         if without is None:
             without = self.canvas.values(sketch=False)
         view = without.astype(np.float32) / 255.0
-        reach = (self.palette.darkest_value, self.palette.lightest_value)
+        reach = self._value_reach()
         light = None
         if self._plan.key == "low" and self._plan.lightest is not None:
             light = self._plan.light_reading(
@@ -5674,8 +5705,93 @@ class Session:
                  checklist.edges_line(view),
                  self._ground_line()]
         if self.canvas.has_sketch:
-            lines.append(checklist.pencil_line(self.canvas.values(sketch=True), without))
+            lines.append(checklist.pencil_line(self.canvas.values(sketch=True), without,
+                                               drawing=self.medium == "graphite"))
         return lines
+
+    def _value_reach(self) -> tuple[float, float]:
+        """What the box reaches, darkest and lightest, for the ``values:`` line.
+
+        A painting's is the palette's: burnt umber alone at the floor, titanium white
+        at the top. A drawing's is the box of pencils on this paper -- the paper's own
+        value times what a 6B's ceiling leaves, and the paper -- because no stroke of
+        graphite reaches the paint's floor and the paper is lighter than any mixture.
+        The first drawing's ``values:`` line read its darks against the paint box and
+        called them *a clear dark*; so did the grade box, and the darks are a closing
+        line of their own (:func:`easel.checklist.darks_line`). The reach is still the
+        box the line should name.
+        """
+        if self.medium == "graphite":
+            paper = self._paper_value()
+            return (paper * (1.0 - GRADES["6B"].ceiling), paper)
+        return (self.palette.darkest_value, self.palette.lightest_value)
+
+    def _paper_value(self) -> float:
+        """The paper's bare value, ``0..1``: what the graphite's unit is written against."""
+        return self._colour_value(self.canvas.ground_color)
+
+    def _paper_untouched(self, mask: np.ndarray | None = None) -> float:
+        """The share of the canvas, or of ``mask``, the graphite has never touched.
+
+        Exact: a pixel the channel holds nothing at is one no line, stump or eraser
+        reached. A stump laid over a bare place moves nothing into it, and the
+        channel says so where a record of the stump would not.
+        """
+        if not self.canvas.has_graphite:
+            return 1.0
+        plane = self.canvas.graphite if mask is None else self.canvas.graphite[mask]
+        return 1.0 if plane.size == 0 else float((plane <= 0.0).mean())
+
+    def _lightest_paper(self) -> float | None:
+        """How much of the plan's lightest place is paper never touched, in a drawing.
+
+        ``None`` for a painting, or with no light named: the ``lightest:`` line then
+        says nothing of the paper.
+        """
+        if self.medium != "graphite" or self._plan.lightest is None:
+            return None
+        mask = self._place_mask(self._plan.lightest.outline)
+        return self._paper_untouched(mask) if mask.any() else None
+
+    def _look_gap_finding(self, records) -> str:
+        """A drawing's own finding: a run of marks laid with no look between them.
+
+        The loop is a look every five to fifteen marks, and the first drawing's
+        ground pass laid 65 side strokes with none inside it -- the one pass of its
+        eight the round's re-measurement failed on the criterion, and the one its
+        painter named as its weakest. A look is not a record, so the rule reads where
+        the painter looked (:attr:`_looked`, the log's length at every look and
+        rehearsal) against the charged marks of ``records``: the longest run with no
+        look at any mark inside it, against :data:`_REPORT_LOOK_GAP`. A rehearsal
+        counts as a look, since a rehearsal is a look at the next marks; the
+        re-measurement counted them too, and with them the other seven passes ran 19
+        marks or fewer between looks.
+
+        ``""`` for a painting -- a paint recipe lays thirty marks between looks as a
+        matter of course, and the rule has not been measured on paint -- for a counted
+        copy, and for a run under the line. Over a pass the run is the pass's; over the
+        whole drawing it is the longest anywhere, which the closing checklist asks.
+        """
+        if self.medium != "graphite" or self._counting:
+            return ""
+        looked = set(self._looked)
+        best: list[StrokeRecord] = []
+        run: list[StrokeRecord] = []
+        for r in records:
+            if r.index in looked:
+                run = []
+            if r.kind in History.UNPAINTED_KINDS:
+                continue
+            run.append(r)
+            if len(run) > len(best):
+                best = list(run)
+        if len(best) < _REPORT_LOOK_GAP:
+            return ""
+        line = (f"{len(best)} marks laid with no look between them: the loop is a look "
+                f"every 5 to 15, and a mark not looked at was a guess. s.look() is free, "
+                f"and so is a rehearsal.")
+        said = self._marks_named(best)
+        return f"{line}\n    {said}" if said else line
 
     def _value_view(self) -> np.ndarray:
         """The whole canvas as values, 0..1, the way :func:`compare_plan` reads it.
@@ -5834,6 +5950,8 @@ class Session:
             # this painting, already keyed in the painting's numbering.
             self._captures.extend(target._captures)
             target._captures = []
+            self._looked.extend(target._looked)
+            target._looked = []
         self._reports.append(PassReport(str(scripts), mode,
                                         int(target._index_base) + int(since), str(text)))
 
@@ -6063,6 +6181,7 @@ class Session:
             "capture": bool(self.capture),
             "captures": list(self._captures),
             "passes": list(self._passes),
+            "looked": [int(i) for i in self._looked],
             "assisted": list(self.assisted),
             # What the engine has said at a call, in order. Beside the log, never in
             # it -- see :meth:`_notify` -- and a key an older build does not read, so
@@ -6162,6 +6281,13 @@ class Session:
                                if isinstance(c, dict) and "at" in c]
                 s._passes = [dict(p) for p in meta.get("passes", [])
                              if isinstance(p, dict) and "at" in p]
+                # A file saved before the looks were kept apart from the captures has
+                # them in the captures, when it captured at all; one that did neither
+                # opens with none, and its closing check says so once.
+                looked = meta.get("looked")
+                if not isinstance(looked, list):
+                    looked = [c["at"] for c in s._captures]
+                s._looked = [int(i) for i in looked if isinstance(i, (int, float))]
                 # Before anything that can say something, because the first thing
                 # this build says about a loaded file is often the out_dir line below.
                 # A code this build does not know is dropped rather than kept: the
@@ -6397,6 +6523,7 @@ class Session:
         fresh._plan = self._plan
         fresh._captures = list(self._captures)
         fresh._passes = list(self._passes)
+        fresh._looked = list(self._looked)
         # The replayed session shares this one's out_dir. Numbering a look from the
         # directory rather than from a per-session counter is what keeps its very
         # next look()/preview()/rehearse()/compare() off a file this one already
@@ -8732,6 +8859,14 @@ _REPORT_EARLY_COUNT = 8         # ...and this many of them is the fault
 _REPORT_ROUND_MARKS = 3         # small round-tip marks at tip_wobble=0 that are one disc
 _ROUND_CAPSULE_WIDTHS = 7.0     # ...where "small" is also shorter than this many widths
 _REPORT_DISC_RADIUS = 0.06      # ...and over a whole painting, discs this close are one passage
+#: A drawing's own rule: this many marks laid with no look or rehearsal between them.
+#: Twice the loop's upper bound of fifteen, and measured on the first drawing before it
+#: was set: its seven passes' longest runs without a look or a rehearsal were 66, 13,
+#: 20, 4, 16, 3 and 2 marks, and the one at 66 is the pass the round's re-measurement
+#: failed on the criterion (`CALIBRATION.md`, *The check, measured on the first
+#: drawing*). At fifteen it would have fired on three of the seven, which is a line a
+#: painter learns to skim.
+_REPORT_LOOK_GAP = 30
 
 # `_ROUND_CAPSULE_WIDTHS` is `PAINTING.md`'s own number for the other half of the same
 # fault: a `round_hard` mark "needs to be about 7x longer than it is wide before it
@@ -9791,12 +9926,20 @@ def _pass_findings(marks: list[StrokeRecord], earlier: int, canvas,
                     (r for r, _ in best),
                 )
             else:
+                # The remedy is the medium's: a drawing has no direction= and no
+                # sweep, and what closes its rows is the stump. The words the rule
+                # is held by (`tests/test_reference.py`) are the same either way.
+                remedy = (
+                    "Lay a plane's rows at two angles 20 degrees or more apart and let "
+                    "the stump close them, and lay a curved passage along its own shape."
+                    if all(r.kind == "graphite" for r, _ in best) else
+                    "Vary direction= between passes, or sweep each mass along its own "
+                    "axis.")
                 found(
                     f"{len(best)} of {len(long_marks)} long marks run within "
                     f"{_REPORT_ANGLE_DEG:.0f} degrees of {_angle_name(centre)}, from "
                     f"{len({_call_of(r) for r, _ in best})} calls: a stack of bars "
-                    f"unless the subject runs that way. Vary direction= between "
-                    f"passes, or sweep each mass along its own axis. Say "
+                    f"unless the subject runs that way. {remedy} Say "
                     f"s.plan(bands='subject') if it does, and this line will count "
                     f"what crosses them instead.",
                     (r for r, _ in best),

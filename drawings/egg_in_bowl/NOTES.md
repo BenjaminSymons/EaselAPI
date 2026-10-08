@@ -323,8 +323,13 @@ plan's fault rather than the drawing's.
 By the person running the round, after the agent's write-up, with
 `scripts/probe_drawing.py drawings/egg_in_bowl/drawing.easel drawing.png` and a probe of
 each claim on a fresh session of the same surface and seed (`LESSONS.md`, *check the
-painters' numbers*). The agent's film is `drawing.mp4`; its viewer rebuilds with
-`easel film drawing.easel --html viewer`.
+painters' numbers*). Two films are kept beside the session file, both re-rendered after
+step 5 fixed the film's held looks (it had drawn the grid over every look, whether or
+not the agent asked for one): **`drawing_looks.mp4`** is the drawing a mark at a time
+with the agent's own looks and rehearsals held where they were taken, and
+**`drawing_strokes.mp4`** is the marks alone (`--hold-looks 0`), both with each stroke
+travelling over three frames (`--stroke-motion`). The viewer rebuilds with `easel film
+drawing.easel --html viewer`.
 
 ### Against the spec's pass criteria
 
@@ -335,7 +340,7 @@ painters' numbers*). The agent's film is `drawing.mp4`; its viewer rebuilds with
 | the plan's places within 0.10 | 6 of 7; `egg_cast` planned 0.24 reads 0.36 | **one place off**, see below |
 | darkest value at or under 0.19 (0.80 of the way to black) | half-percentile **0.255**; 0.06% of the canvas under 0.19; the darkest graphite laid is 0.913 of 0.96 | **failed**: the darks were laid and then stumped and lifted lighter |
 | paper white somewhere in the subject | the egg's place is 49% paper never touched, reads 0.95 | met |
-| the film plays and the viewer scrubs | `drawing.mp4`, 1.4 MB, 27 s to write; the viewer wrote after a fix (below) | met |
+| the film plays and the viewer scrubs | the film, 27 s to write, re-rendered after step 5 as `drawing_looks.mp4` (3.8 MB) and `drawing_strokes.mp4` (0.6 MB); the viewer wrote after a fix (below) | met |
 | replay matches the export within a level | replay against the saved canvas: every pixel identical; the export against the canvas without the sketch: every pixel identical | met, exactly |
 | notes name what went wrong, measured against reasoned | written, every finding labelled | met |
 

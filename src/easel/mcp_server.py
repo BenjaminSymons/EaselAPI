@@ -1133,10 +1133,15 @@ def build_server() -> MCPServer:
         words, written to be read on its own and enough to start from.
 
         Args:
-            document: which of the six to return.
+            document: which of the seven to return.
                 "guide" (PAINTER.md) -- the method: the loop, the order of work,
                     the mistakes, ten warm-up exercises, the closing checklist.
-                    Required reading, and the only one that is.
+                    Required reading for a painting, and the only one that is.
+                "draftsman" (DRAFTSMAN.md) -- the same for a drawing, in the
+                    graphite medium (`new` with medium="graphite"): the loop,
+                    the order of work, the mistakes, nine exercises, the closing
+                    checklist. Required reading for a drawing, instead of the
+                    painting guide and not as well as it.
                 "painting" (PAINTING.md) -- how the paint, the brushes and the
                     planning tools behave, and copying a photograph in its last
                     chapter. The reasons: `explain` prints the passage a
@@ -1152,12 +1157,12 @@ def build_server() -> MCPServer:
                     reading: it is a list of ways to fail, which teaches you to
                     see faults you were not going to make. Use `diagnose`
                     instead, which is this index with the pointer followed.
-            full: for "guide", the whole of it rather than its first page. The
-                other documents always come back whole.
+            full: for "guide" and "draftsman", the whole of it rather than its
+                first page. The other documents always come back whole.
         """
-        if document != "guide":
+        if document not in _docs.GUIDES:
             return _docs.read(document)
-        return _docs.read("guide") if full else _docs.front_page()
+        return _docs.read(document) if full else _docs.front_page(document)
 
     @server.tool()
     @_tool

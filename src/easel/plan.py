@@ -326,11 +326,21 @@ class Plan:
             line += f"; {shown}{more}"
         return line
 
-    def lightest_line(self, value_view: np.ndarray) -> str:
+    def lightest_line(self, value_view: np.ndarray, paper: float | None = None) -> str:
         """One line: whether the place meant to be lightest is the lightest.
 
             lightest: lamp reads 0.78 as a place, 0.84 at its brightest twentieth, the lightest of the 4 places planned
             lightest: horizon reads 0.61 and lamp, the plan's own light, 0.48 as a place (12% of it lighter by more than 0.15), 0.59 at its brightest twentieth -- 0.13 under
+
+        **In a drawing the line carries one number more**, ``paper``: the share of the
+        named light that is paper never touched, which the session reads off the
+        graphite channel. The guide's rule is that a highlight is paper never touched
+        and a highlight lifted is a value, and the first drawing is the measurement:
+        its light read ``0.95`` as a place with ``49%`` of it never touched, and a
+        rule read off the records instead would have fired on a stump laid over the
+        whole table in the second pass, when the light was bare paper and the stump
+        moved nothing (`CALIBRATION.md`, *The check, measured on the first drawing*).
+        So the share is the line, and nothing is said about what was laid over it.
 
         The candidates are the plan's own places, ranked by what each reads as a place
         -- its median, the reading the ``plan:`` line prints. Ranking them is the
@@ -367,13 +377,18 @@ class Plan:
         top = max(candidates, key=lambda p: read[p.name].median)
         both = (f"{light.said(f'{light.median:.2f} as a place')}, "
                 f"{light.brightest:.2f} at its brightest twentieth")
+        untouched = ""
+        if paper is not None:
+            untouched = (f"; {paper:.0%} of it paper never touched" if paper >= 0.005
+                         else "; none of it paper never touched -- a highlight lifted "
+                              "is a value, not the paper")
         if top.name == self.lightest.name:
             return (f"lightest: {self.lightest.name} reads {both}, the lightest "
-                    f"of the {len(candidates)} places planned")
+                    f"of the {len(candidates)} places planned{untouched}")
         other = read[top.name]
         return (f"lightest: {top.name} reads {other.said(f'{other.median:.2f}')} and "
                 f"{self.lightest.name}, the plan's own light, {both} -- "
-                f"{other.median - light.median:.2f} under")
+                f"{other.median - light.median:.2f} under{untouched}")
 
     def light_reading(self, value_view: np.ndarray) -> tuple[str, float, float] | None:
         """The named light against everything else, for the ``values:`` line.
