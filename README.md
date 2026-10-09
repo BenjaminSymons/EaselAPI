@@ -241,11 +241,12 @@ With `capture=True` the session keeps every look, rehearsal and pass beside the 
 and `easel film` plays the drawing back a mark at a time with those looks held where
 they were taken: an MP4, a GIF or a directory of PNG frames, and with `--html` a page
 that scrubs to any mark beside the script line that laid it.
-[`drawings/`](https://github.com/Gemberkoekje/EaselAPI/tree/main/drawings) holds the two
-test drawings of `SPEC.md`, a hen's egg in a bowl drawn twice from the same words by two
-fresh sessions, the first with no guide and the second against the guide written from
-it, each with its passes, its session file, its two films and its notes, re-measured
-against the spec's criteria.
+[`drawings/`](https://github.com/Gemberkoekje/EaselAPI/tree/main/drawings) holds the
+three test drawings of `SPEC.md`, a hen's egg in a bowl drawn three times from the same
+words by three fresh sessions: the first with no guide, the second against the guide
+written from it, and the third against what the second changed in it. Each has its
+passes, its session file, its two films and its notes, re-measured against the spec's
+criteria.
 
 ## Command line
 

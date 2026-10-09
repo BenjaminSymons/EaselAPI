@@ -51,13 +51,13 @@ def lay(s: Session, n: int, y: float = 0.5) -> None:
 def test_a_run_of_marks_with_no_look_between_them_is_a_finding_at_the_line(tmp_path):
     s = make(tmp_path)
     before = len(s.history.records)
-    lay(s, _REPORT_LOOK_GAP - 1)
+    lay(s, _REPORT_LOOK_GAP)
     assert "no look between them" not in s.report(since=before)
     lay(s, 1)
     said = s.report(since=before)
-    assert f"{_REPORT_LOOK_GAP} marks laid with no look between them" in said
+    assert f"{_REPORT_LOOK_GAP + 1} marks laid with no look between them" in said
     # The marks are named, as every finding that counts marks names them.
-    assert f"records {before}-{before + _REPORT_LOOK_GAP - 1}" in said
+    assert f"records {before}-{before + _REPORT_LOOK_GAP}" in said
 
 
 def test_a_look_or_a_rehearsal_breaks_the_run(tmp_path):
@@ -79,16 +79,35 @@ def test_a_look_or_a_rehearsal_breaks_the_run(tmp_path):
 
 def test_the_looks_survive_the_file_and_the_closing_check_reads_the_longest_run(tmp_path):
     s = make(tmp_path)
-    lay(s, _REPORT_LOOK_GAP)
+    lay(s, _REPORT_LOOK_GAP + 1)
     s.look()
     lay(s, 3)
     path = tmp_path / "d.easel"
     s.save(path)
     again = Session.load(path)
-    assert again._looked == s._looked == [_REPORT_LOOK_GAP]
-    assert f"{_REPORT_LOOK_GAP} marks laid with no look between them" in again.checklist()
+    assert again._looked == s._looked == [_REPORT_LOOK_GAP + 1]
+    assert (f"{_REPORT_LOOK_GAP + 1} marks laid with no look between them"
+            in again.checklist())
     # A pass after the look is clean on its own.
-    assert "no look between them" not in again.report(since=_REPORT_LOOK_GAP)
+    assert "no look between them" not in again.report(since=_REPORT_LOOK_GAP + 1)
+
+
+def test_a_helper_call_is_one_decision(tmp_path):
+    """The lines one `hatch` lays are one decision, taken at the call: a single call of
+    more lines than the gap does not fire, and counted with hand marks it counts once.
+    The second drawing's painter read the rule, counted a line at a time, as a rule
+    against the helpers; its refine pass's runs of 16 were a 15-line hatch and one mark."""
+    s = make(tmp_path)
+    before = len(s.history.records)
+    laid = s.hatch(span("B2", "G5"), angle=30, grade="HB", spacing=0.012)
+    assert len(laid) > _REPORT_LOOK_GAP
+    assert "no look between them" not in s.report(since=before)
+    # Hand marks and the call together: the call is one of the decisions, not all of
+    # its lines, and the line says both counts when they differ.
+    lay(s, _REPORT_LOOK_GAP)
+    said = s.report(since=before)
+    assert (f"{len(laid) + _REPORT_LOOK_GAP} marks in {_REPORT_LOOK_GAP + 1} calls laid "
+            f"with no look between them") in said
 
 
 def test_a_painting_is_not_asked(tmp_path):
@@ -194,6 +213,27 @@ def test_the_bars_line_gives_a_drawing_the_drawings_remedy(tmp_path):
     assert "a stack of bars unless the subject runs that way" in said
     assert "two angles 20 degrees or more apart" in said
     assert "direction=" not in said
+
+
+def test_the_arcs_of_one_crescent_are_not_a_stack_of_bars(tmp_path):
+    """The rule reads a chord, and the arcs of one crescent laid along a form share
+    one: the line's own remedy for a curved passage fired it on the second drawing's
+    egg, *15 of 15 long marks within 6 degrees*. A mark that turns `_REPORT_TURN_DEG`
+    or more between its first step and its last is not a bar."""
+    import math
+    from easel.session import _REPORT_TURN_DEG, _mark_turn
+
+    s = make(tmp_path)
+    before = len(s.history.records)
+    for i in range(15):
+        cy = 0.35 + 0.02 * i
+        pts = [(0.5 + 0.28 * math.cos(math.radians(t)), cy + 0.28 * math.sin(math.radians(t)))
+               for t in range(200, 341, 10)]
+        s.line(pts, "HB", pressure=0.8, tip="side", width=0.02)
+    arcs = s.history.records[before:]
+    assert all(_mark_turn(r, s.canvas) >= _REPORT_TURN_DEG for r in arcs)
+    assert "stack of bars" not in s.report(since=before)
+    assert "stack of bars" not in s.checklist()
 
 
 # --------------------------------------------------------------------------------------

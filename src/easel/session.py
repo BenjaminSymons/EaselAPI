@@ -5762,10 +5762,17 @@ class Session:
         painter named as its weakest. A look is not a record, so the rule reads where
         the painter looked (:attr:`_looked`, the log's length at every look and
         rehearsal) against the charged marks of ``records``: the longest run with no
-        look at any mark inside it, against :data:`_REPORT_LOOK_GAP`. A rehearsal
-        counts as a look, since a rehearsal is a look at the next marks; the
-        re-measurement counted them too, and with them the other seven passes ran 19
-        marks or fewer between looks.
+        look at any mark inside it, over :data:`_REPORT_LOOK_GAP`. A rehearsal counts
+        as a look, since a rehearsal is a look at the next marks; the re-measurement
+        counted them too, and with them the other seven passes ran 19 marks or fewer
+        between looks.
+
+        The run is counted in **decisions**, not marks: the lines one ``hatch``,
+        ``scribble`` or ``tone`` call lays are one decision, taken at the call, and
+        a rehearsal right before it looked at all of them. Counted a line at a time,
+        a single call over a shape bigger than two cells fired this with a rehearsal
+        right before it, and the second drawing's painter read the rule as a rule
+        against the helpers. Marks laid by hand are a decision each.
 
         ``""`` for a painting -- a paint recipe lays thirty marks between looks as a
         matter of course, and the rule has not been measured on paint -- for a counted
@@ -5775,22 +5782,31 @@ class Session:
         if self.medium != "graphite" or self._counting:
             return ""
         looked = set(self._looked)
-        best: list[StrokeRecord] = []
-        run: list[StrokeRecord] = []
+        best: list[list[StrokeRecord]] = []
+        run: list[list[StrokeRecord]] = []
+        last_call = None
         for r in records:
             if r.index in looked:
-                run = []
+                run, last_call = [], None
             if r.kind in History.UNPAINTED_KINDS:
                 continue
-            run.append(r)
+            call = _call_of(r)
+            if run and call[0] != "hand" and call == last_call:
+                run[-1].append(r)
+            else:
+                run.append([r])
+            last_call = call
             if len(run) > len(best):
                 best = list(run)
-        if len(best) < _REPORT_LOOK_GAP:
+        if len(best) <= _REPORT_LOOK_GAP:
             return ""
-        line = (f"{len(best)} marks laid with no look between them: the loop is a look "
-                f"every 5 to 15, and a mark not looked at was a guess. s.look() is free, "
-                f"and so is a rehearsal.")
-        said = self._marks_named(best)
+        marks = [r for decision in best for r in decision]
+        counted = (f"{len(marks)} marks" if len(marks) == len(best)
+                   else f"{len(marks)} marks in {len(best)} calls")
+        line = (f"{counted} laid with no look between them: the loop is a look every "
+                f"5 to 15, and a mark not looked at was a guess. s.look() is free, and "
+                f"so is a rehearsal.")
+        said = self._marks_named(marks)
         return f"{line}\n    {said}" if said else line
 
     def _value_view(self) -> np.ndarray:
@@ -8850,6 +8866,15 @@ def _mass_reason(fill, b: Brush, direction, density: float, laid: int) -> str:
 _REPORT_MIN_MARKS = 10          # one brush at one size: over this many marks
 _REPORT_ANGLE_MARKS = 12        # a stack: this many long marks within...
 _REPORT_ANGLE_DEG = 6.0         # ...this many degrees of one another
+#: ...and a mark that turns this far between its first step and its last is not a bar.
+#: The rule reads a mark's chord, so a crescent of arcs laid along one form -- the
+#: stack-of-bars line's own remedy for a curved passage -- came back *15 of 15 long
+#: marks within 6 degrees* on the second drawing's egg. Measured on both drawings'
+#: logs: the marks of every true stack turned 0 to 22 degrees, the egg's arcs 37 to
+#: 175, and 30 is the middle of that gap. Sagitta over chord does not separate them
+#: (the true stacks reach 0.10, the arcs start at 0.06). The one painting file with a
+#: log, the lighthouse handover, clusters 65 of 150 long marks either way.
+_REPORT_TURN_DEG = 30.0
 _REPORT_SMALL_BRISTLE = 0.025   # a comb under this is four streaks with gaps...
 _REPORT_STARVED_LOAD = 0.6      # ...unless it was starved this far, where they are the mark
 _REPORT_CROSSING_DEG = 30.0     # a long mark this far off the bars runs across them
@@ -8859,14 +8884,17 @@ _REPORT_EARLY_COUNT = 8         # ...and this many of them is the fault
 _REPORT_ROUND_MARKS = 3         # small round-tip marks at tip_wobble=0 that are one disc
 _ROUND_CAPSULE_WIDTHS = 7.0     # ...where "small" is also shorter than this many widths
 _REPORT_DISC_RADIUS = 0.06      # ...and over a whole painting, discs this close are one passage
-#: A drawing's own rule: this many marks laid with no look or rehearsal between them.
-#: Twice the loop's upper bound of fifteen, and measured on the first drawing before it
-#: was set: its seven passes' longest runs without a look or a rehearsal were 66, 13,
-#: 20, 4, 16, 3 and 2 marks, and the one at 66 is the pass the round's re-measurement
-#: failed on the criterion (`CALIBRATION.md`, *The check, measured on the first
-#: drawing*). At fifteen it would have fired on three of the seven, which is a line a
-#: painter learns to skim.
-_REPORT_LOOK_GAP = 30
+#: A drawing's own rule: over this many decisions laid with no look or rehearsal
+#: between them, a helper call counting as one. The loop's own upper bound of fifteen.
+#: It was set at 30, twice that, off the first drawing alone, where fifteen fired on
+#: three passes of seven; then the second drawing broke the guide's rule once, at 21,
+#: and the check never said so -- the one criterion of the spec's eight it failed was
+#: the one the engine did not measure. Re-measured on both logs with a helper call as
+#: one decision: at fifteen the first drawing fires on its ground pass (66) and its
+#: interior (20), its refine pass's two runs of 16 being a 15-line hatch and one mark;
+#: the second fires on its table rows (16 and 21) and nowhere else
+#: (`CALIBRATION.md`, *The check, measured on the first drawing*).
+_REPORT_LOOK_GAP = 15
 
 # `_ROUND_CAPSULE_WIDTHS` is `PAINTING.md`'s own number for the other half of the same
 # fault: a `round_hard` mark "needs to be about 7x longer than it is wide before it
@@ -8943,6 +8971,27 @@ def _mark_length_and_angle(r: StrokeRecord, canvas) -> tuple[float, float]:
     dx = (float(pts[-1, 0]) - float(pts[0, 0])) * canvas.width / long
     dy = (float(pts[-1, 1]) - float(pts[0, 1])) * canvas.height / long
     return math.hypot(dx, dy), math.degrees(math.atan2(dy, dx)) % 180.0
+
+
+def _mark_turn(r: StrokeRecord, canvas) -> float:
+    """How far a mark turns between its first step and its last, in degrees, 0 to 180.
+
+    What tells an arc from a bar: the chord of a crescent's arc lies at one angle, and
+    so does the chord of the next arc along the same form, which is how a passage laid
+    the way the stack-of-bars line asks came back as a stack of bars. A straight mark
+    turns 0; a mark of two points cannot turn at all.
+    """
+    pts = np.asarray(r.points, dtype=np.float64)
+    if len(pts) < 3:
+        return 0.0
+    long = float(canvas.long_side)
+    xy = pts * np.array([canvas.width / long, canvas.height / long])
+    steps = [s for s in np.diff(xy, axis=0) if math.hypot(float(s[0]), float(s[1])) > 1e-9]
+    if len(steps) < 2:
+        return 0.0
+    first = math.atan2(float(steps[0][1]), float(steps[0][0]))
+    last = math.atan2(float(steps[-1][1]), float(steps[-1][0]))
+    return abs((math.degrees(last - first) + 180.0) % 360.0 - 180.0)
 
 
 def _angle_centre(angles) -> float:
@@ -9886,13 +9935,16 @@ def _pass_findings(marks: list[StrokeRecord], earlier: int, canvas,
             f"the size, the brush or the pressure between things."
         )
 
-    # A stack of passes at one angle, from two or more calls -- a scumble counting once.
+    # A stack of passes at one angle, from two or more calls -- a scumble counting once,
+    # and an arc not at all: the rule reads chords, and the arcs of one crescent share
+    # one (`_REPORT_TURN_DEG`).
     long_marks = []
     for r in marks:
         length, angle = _mark_length_and_angle(r, canvas)
         if length >= 2.0 * float(r.params.get("size", 0.0)) and length > 0.0:
             long_marks.append((r, angle))
-    bars = _one_per_scumble(long_marks)
+    straight = [(r, a) for r, a in long_marks if _mark_turn(r, canvas) < _REPORT_TURN_DEG]
+    bars = _one_per_scumble(straight)
     best: list[tuple[StrokeRecord, float]] = []
     for _, centre in bars:
         near = [(r, a) for r, a in bars
@@ -9936,7 +9988,7 @@ def _pass_findings(marks: list[StrokeRecord], earlier: int, canvas,
                     "Vary direction= between passes, or sweep each mass along its own "
                     "axis.")
                 found(
-                    f"{len(best)} of {len(long_marks)} long marks run within "
+                    f"{len(best)} of {len(straight)} long marks run within "
                     f"{_REPORT_ANGLE_DEG:.0f} degrees of {_angle_name(centre)}, from "
                     f"{len({_call_of(r) for r, _ in best})} calls: a stack of bars "
                     f"unless the subject runs that way. {remedy} Say "

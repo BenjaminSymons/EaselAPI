@@ -1,0 +1,16 @@
+checklist for this painting -- 132 of 400 marks spent
+  plan: 9 of 10 places inside 0.10; egg_cast_seen +0.17 (20% of it darker and 26% lighter by more than 0.15)
+  lightest: egg_lit reads 0.96 as a place, 0.96 at its brightest twentieth, the lightest of the 10 places planned; 98% of it paper never touched
+  subject: 20 of 132 marks so far (15%), against 25% planned -- behind, if the subject is finished
+  values: 0.37-0.90 of a box that reaches 0.04-0.96, clusters at 0.46, 0.62, 0.85; a clear light, mid and dark
+  edges: 30% of edges are under 2.5 px wide, median 3.9 px
+  paper: 2.63% of the canvas is paper never touched
+  pencil: the envelope still shows over 1.46% of the canvas -- export(sketch=False) leaves it out
+  boxes: no masses laid yet
+  darks: the darkest half-percentile reads 0.15, 0.85 of the way from paper to black
+  unspent: 268 of 400 unspent (67%) -- name the weakest passage and spend them there
+
+three this cannot answer, and they are the ones to answer slowly:
+  - Cover the thing you measured most carefully. Is it still attached to the picture -- and is the lightest mass the one you planned to be?
+  - Which passage would you apologise for? That is the one the marks left are for, not the one you have most recently been enjoying.
+  - You wrote: 'a white egg in a white bowl is one light with two shapes in it, and the drawing is whether the second shape can be found inside the first without an outline'. Is that reason still in the picture, looked at small -- s.look(scale=256)?

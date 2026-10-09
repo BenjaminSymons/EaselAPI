@@ -174,6 +174,54 @@ the spec's last step closes.
   server page names the new tool and arguments, and counts seven documents where it
   counted six.
 
+**After the plan: the check, held to the guide.** Two of run 2's five engine candidates,
+measured on both drawings' logs before they were built (`CALIBRATION.md`, *The check,
+measured on the first drawing*), and a third that the measuring found.
+
+- *No look between them* fires at the guide's own number: **over 15**, where it fired
+  at 30. The second drawing broke the loop's rule once, at 21, and the check said
+  nothing; it was the one criterion of the spec's eight that drawing failed, and the
+  one the engine did not measure.
+- The run is counted in decisions, not marks: the lines one `hatch`, `scribble` or
+  `tone` call lays are one decision, taken at the call, and a rehearsal right before
+  it looked at all of them. The first drawing's two runs of 16 are a 15-line hatch and
+  one mark, and no longer fire; the ground pass at 66 and the interior at 20 do, as
+  the second drawing's table rows at 16 and 21 now do. The line says *35 marks in 16
+  calls* when the two counts differ.
+- *A stack of bars* leaves an arc out: a mark that turns 30 degrees or more between its
+  first step and its last is not a bar, where the rule read its chord. The arcs of one
+  crescent share a chord, and the line's own remedy for a curved passage fired it on
+  the second drawing's egg, *15 of 15*. Both media, since an arc is not a bar in
+  either; the two true stacks in the drawings turn 22 degrees at most, and the one
+  painting with a session file reads the same with the gate and without.
+
+**Run 2's seven guide candidates, folded into `DRAFTSMAN.md`**, at 4,992 of its 5,000
+words: the hard edge laid in the mass's own value; a side stroke at one pressure
+ending in a block, so a stroke in the open and every arc wants a list that falls to
+its ends; the stump's number as a function of the holes, three numbers where the
+guide quoted two; the band beside a thing stopping where a second thing breaks the
+silhouette; `s.compare(s.plan())` named as the number; `darks:` as an area; and the
+budget as twice what the subject has cost, with *unspent is not a finding by itself*
+in the closing section. Paid for by cutting section 2's plane example, which the
+card's example and exercise 3 already lay, and three sentences of the first drawing's
+history.
+
+**Step 6, run 3: the candidates, measured.** `drawings/egg_in_bowl_3/`: the same words
+as runs 1 and 2 and a third seed, drawn by a fresh session against the guide and the
+check above, in 140 of 400 marks, with its passes, its exercises, its session file,
+its two films and its notes, re-measured. Seven of the spec's eight criteria met, as
+run 2, and a different one failed: the loop was kept for the first time (a longest run
+of 13 against run 2's 21, with the check's one line, at 19 in a rehearsal, acted on),
+and one place of ten read `+0.17` through the agent's own polygon. Of run 2's seven
+candidates five held, one held as far as tested, and one was not tested; the arc gate
+and the helper-call rule were not exercised. Three statements the run showed to be
+false are corrected here rather than carried as candidates: `CALIBRATION.md`'s
+sampler-era sentence that a light tone is a soft grade held lightly, the guide's
+`sample()` as a mean *value*, and its closing promise of a longest-run line that in
+fact prints only over 15. The run's own twelve candidates and four for the engine are
+at the end of its `NOTES.md`, each re-measured and each a hypothesis until a fourth
+session draws against it.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with

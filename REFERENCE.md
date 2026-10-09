@@ -489,7 +489,7 @@ is not a record:
 
 | It says, of a drawing | when |
 |---|---|
-| *no look between them* | `30` or more marks are laid with no look or rehearsal between any two of them — twice the loop's upper bound. Over a pass the run is the pass's; over the whole drawing, the longest anywhere. A painting is not asked |
+| *no look between them* | more than `15` decisions are laid with no look or rehearsal between any two of them — the loop's own upper bound — where the lines one `hatch`, `scribble` or `tone` call lays are one decision, and a mark laid by hand is one each. Over a pass the run is the pass's; over the whole drawing, the longest anywhere. A painting is not asked |
 
 And four lines that read the medium: `values:` names the box of pencils on this paper,
 the paper's value times what a `6B` leaves and the paper itself, rather than the box of
@@ -622,7 +622,7 @@ its brush is wide, and a mark is *laid by hand* when no mass verb laid it.
 | It says | when |
 |---|---|
 | *one brush at one size for a whole pass reads as one tool* | every mark of a pass of `10` or more, from two or more calls, is one brush at one size |
-| *a stack of bars unless the subject runs that way* | `12` or more long marks lie within `6` degrees of one angle, from two or more calls, and are most of the pass's long marks, a `scumble` counting as one. **Said once, and again only when the picture has picked up a long mark `30` degrees off the bars it was said about**; `--check`, which is asked for rather than printed at you, says it whenever it is true |
+| *a stack of bars unless the subject runs that way* | `12` or more long marks lie within `6` degrees of one angle, from two or more calls, and are most of the pass's long marks, a `scumble` counting as one and an arc not at all: a mark that turns `30` degrees or more between its first step and its last is read by its chord otherwise, and the arcs of one crescent share a chord. **Said once, and again only when the picture has picked up a long mark `30` degrees off the bars it was said about**; `--check`, which is asked for rather than printed at you, says it whenever it is true |
 | *a graded passage comes back as bars* | `5` or more long parallel marks at `3` or more colours, in one run with no gap wider than `4` brushes and **each laid over the next rather than beside it** — two neighbours sharing under `30%` of the shorter one's reach along the stack break it, as glints do — their colours turning at most once, are stepped further apart than half the narrowest brush laying them. A brush that lays no colour of its own is not counted |
 | *a comb that small is four streaks with gaps, not a brush* | `3` or more marks are laid with a `bristle` under `size=0.025` **at a load over `0.6`**, because below that the comb's gaps are the mark. A pass's rule: over a whole painting it says nothing, since what it asks for is a brush for the next marks |
 | *detail before the masses are down* | `8` or more marks under `size=0.02` fall inside the painting's first `60` |

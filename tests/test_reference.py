@@ -512,7 +512,7 @@ def _rule_thresholds() -> dict[str, list[str]]:
     return {
         "one brush": [n(sm._REPORT_MIN_MARKS)],
         "bars": [n(sm._REPORT_ANGLE_MARKS), n(sm._REPORT_ANGLE_DEG),
-                 n(sm._REPORT_CROSSING_DEG)],
+                 n(sm._REPORT_TURN_DEG), n(sm._REPORT_CROSSING_DEG)],
         "graded": [n(sm._REPORT_BAND_MARKS), n(sm._REPORT_BAND_COLOURS),
                    n(sm._REPORT_BAND_GAP), f"`{sm._REPORT_BAND_OVERLAP:.0%}`"],
         "comb": [f"`size={sm._REPORT_SMALL_BRISTLE:g}`", n(sm._REPORT_STARVED_LOAD)],

@@ -10,11 +10,10 @@ open as you draw, and open the other two when a situation calls for one.
 | File | What it holds | When |
 |---|---|---|
 | **`DRAFTSMAN.md`** - this one | the method for graphite: the loop, the order, the mistakes, the exercises, the checklist | now, and open beside you while you draw |
-| [`REFERENCE.md`](REFERENCE.md#the-graphite-medium) | every fact on one page; *The graphite medium* is the section for the pencils, the helpers and what the check says of a drawing | when you want to look something up |
-| [`CALIBRATION.md`](CALIBRATION.md#the-graphite-medium) | the measurement behind every number quoted here: the grades at three pressures, the stump, the erasers, and what the check measured on the first drawing | when a number is the question |
+| [`REFERENCE.md`](REFERENCE.md#the-graphite-medium) | every fact on one page; *The graphite medium* is the section | when you want to look something up |
+| [`CALIBRATION.md`](CALIBRATION.md#the-graphite-medium) | the measurement behind every number quoted here | when a number is the question |
 
-`RECIPES.md` and `PAINTING.md` are about paint; a situation they describe in terms of a
-brush has no recipe here yet, and what you lay instead is in *The workflow* below.
+`RECIPES.md` and `PAINTING.md` are about paint, and have no verb here.
 
 **First: have you chosen a subject?** If you have, the finished drawings in
 [`drawings/`](https://github.com/Gemberkoekje/EaselAPI/tree/main/drawings) are open
@@ -42,14 +41,15 @@ s = Session(1024, 768, medium="graphite", seed=7, budget=400, capture=True)
 
 Coordinates run `0..1` from the top-left; a place is `cell("D5")`, `span("C3", "F6")`,
 or a shape. The paper is white `cartridge` unless you say otherwise, and `look()` is
-greyscale. **The `budget=400` is this example's**, and it is about what one subject with
-three or four value masses costs at this size, laid the way this page says.
+greyscale. **The `budget=400` is this example's**, and it is twice what one subject with
+three or four value masses has cost at this size, laid the way this page says: two
+drawings of one spent 154 and 138, and the rest is reserve.
 
 **The loop.** **Look every 5 to 15 strokes.** `s.look()` returns the path of a PNG,
 and you open it. **Rehearse every pass before you pay for it**: `s.rehearse(plan)` lays
 the plan on a copy and shows the result, and `easel run pass.py --rehearse` does it for
-a script. A rehearsal is a look, and the check counts it as one: thirty marks with no
-look or rehearsal between them is a finding after the pass.
+a script. A rehearsal is a look, and the check counts it: over fifteen marks with no
+look between them is a finding; a helper call counts once.
 
 **What a mark costs.** `line` is one. `hatch`, `crosshatch`, `scribble` and `tone` are
 one *per line laid*, and at the side's default width that is **ten a grid cell** for
@@ -81,15 +81,17 @@ s.hatch(ellipse((0.5, 0.55), 0.2, 0.14), grade="2B", tip="side", pressure=0.8)
    row of steps is a staircase.
 4. **Check the values before anything else.** Write the plan down where the check can
    see it, read the places back after every pass, and **read medians, not means**: the
-   check reads a place by its median, and `sample()` is a mean of whatever is in it.
+   check reads a place by its median, and `sample()` is a mean colour of whatever is in it.
 5. **Then the mid-tones**, each passage along its own form, a stump along the arcs to
    close the tooth.
 6. **Edges last but one.** A hard edge is a narrow side stroke laid last with its
-   centre a pixel or two inside the line; a lost edge is two tones of one value butting
-   on the line and one stump dragged across the join.
+   centre a pixel or two inside the line, in the mass's own value and not a hard grade
+   leant on; a lost edge is two tones of one value butting on the line and one stump
+   dragged across the join.
 7. **Darks last, and leave them unstumped.** A stump lightens what the check reads by
-   six to eleven hundredths. The darkest mass is a `4B` or `6B` leant on, laid after
-   every stump near it; the closing check says how far the darks reached.
+   three to fifteen hundredths, more the more holes it has to spread. The darkest mass
+   is a `4B` or `6B` leant on, laid after every stump near it; the closing check says
+   how far the darks reached.
 8. **Highlights are paper never touched.** Plan them as places no line crosses, and
    build the drawing round them. An eraser is a repair with a residue, for a passage
    that went wrong, not the way a light is made.
@@ -111,10 +113,10 @@ s.kneaded(cell("B2"), strength=0.5)      # lifts half; the ghost stays
 say so: `s.plan(values={far: 0.70, ...}, lightest=mass, subject_share=0.45,
 why=...)`. The plan's places are read by their medians after every pass, the light's
 line says how much of it is still paper never touched, and `s.checklist()` quotes your
-`why` back at the end. **Count the horizontal rows in the envelope** while it is still
-free: a drawing's planes are always laid in rows, and the check says so after a pass of
-them; rows at two angles, and a passage laid along its own form crossing them, is the
-answer, and `s.plan(bands="subject")` is for a subject that really runs that way.
+`why` back at the end. **Count the rows in the envelope** while it is still free: a
+drawing's planes are laid in rows, and the check says so after a pass of them; two
+angles, and a passage crossing them along its own form, is the answer, and
+`s.plan(bands="subject")` is for a subject that runs that way.
 
 **Six mistakes, each with its fix beside it.**
 
@@ -136,12 +138,6 @@ leaves three it cannot, which are at the end of this file.
 
 ## Getting started
 
-```python
-from easel import Session
-
-s = Session(1024, 768, medium="graphite", seed=7)
-```
-
 `medium="graphite"` is a declaration the file keeps: the paper defaults to `cartridge`,
 every `look()` is a values view, and the check reads the drawing against the box of
 pencils rather than the box of paints. Textures: `cartridge`, `smooth`, `linen`,
@@ -160,7 +156,9 @@ as the grade allows. `tip="side"` is the lead laid over, a mark `0.024` of the l
 wide unless `width=` says otherwise, following the stroke's direction, riding on the
 peaks of the tooth: how a mass is laid. A pressure list on a hand-laid `line()` is read
 **along the stroke**, so a row laid right to left wants its list turned round; the
-helpers do that for their own flipped passes.
+helpers do that for their own flipped passes. **A side stroke at one pressure ends in a
+block at both ends**, and a short one reads as a rectangle: a stroke in the open, and
+every arc, wants a list that falls to its ends, which fade over their last thirty pixels.
 
 ---
 
@@ -190,25 +188,8 @@ drawing's only hold.
 
 **What a plane costs.** `tone()` measures as it lays and lands within two hundredths,
 and it costs ten lines a grid cell; a plane of twenty cells is two hundred. `hatch()`
-with the side costs the same. A plane is laid instead as broad side strokes by hand:
-
-```python
-from easel import Session, polygon
-
-s = Session(1024, 768, medium="graphite", seed=2)
-far = polygon([(0.0, 0.0), (1.0, 0.0), (1.0, 0.33), (0.0, 0.35)], name="far")
-before = len(s.history.records)
-for k, y in enumerate((0.03, 0.09, 0.15, 0.21, 0.27)):
-    row = [(-0.02, y), (1.02, y)]
-    s.line(row if k % 2 == 0 else row[::-1], "2H", pressure=[0.55, 0.80], tip="side",
-           width=0.07, smooth=False, note="far")
-for k, x in enumerate((-0.1, 0.1, 0.3, 0.5, 0.7, 0.9)):     # a second angle
-    row = [(x, 0.0), (x + 0.22, 0.34)]
-    s.line(row if k % 2 == 0 else row[::-1], "2H", pressure=0.7, tip="side",
-           width=0.07, smooth=False, note="far")
-s.stump(far, strength=1.0)
-print(s.report(since=before))
-```
+with the side costs the same. A plane is laid instead as broad side strokes by hand, at
+two angles, the way the card's example and exercise 3 lay one.
 
 **An even tone is a hard grade leant on, not a soft grade held lightly.** The paper's
 tooth is loud: `HB` at `0.5` leaves 18% of a cell bare paper, `2B` at `0.5` 4%, and the
@@ -219,7 +200,9 @@ a near plane want; a pressure list along each row makes the plane lighter toward
 light. **The rows stop half a stroke short of anything standing on the plane**: a side
 stroke's half-width crosses a hatch's outline by 12 px at the default width and 35 px
 at `0.07`, and `hatch` cuts its paths, not its widths. The band beside the thing is laid
-in the thing's own pass, along its silhouette.
+in the thing's own pass, along its silhouette, as one layer where the rows are two, and
+**it stops where a second thing standing in the first breaks the silhouette**: a band
+and an edge stroke each laid across that crown cost two lifts to take back.
 
 **One stump at full strength closes the rows**; a second evens the mottle a single
 stump leaves over a large place. A stump over a plane moves its mean by two hundredths
@@ -228,9 +211,7 @@ and its median by about six, so read the plane after the stump, not before.
 ### 3. Lay each curved passage along its own shape
 
 A side stroke that ends on a curved outline ends there at a different place on every
-row, and the ends read as steps. The first drawing fought the staircase on four
-passages and found the fix on the third rehearsal rather than reading it: **build the
-passage as arcs of its own shape**, the outline scaled toward the centre or grown away
+row, and the ends read as steps. **Build the passage as arcs of its own shape**, the outline scaled toward the centre or grown away
 from it, each arc a `line()` with a pressure list that is heavier where the form turns
 from the light, cut into runs round whatever stands in it. For a hollow thing, the arcs
 run round the inside; for a form, the arcs are cross-contours, and each is shorter than
@@ -280,13 +261,16 @@ the sign being the drawing minus the plan, and which place is lightest. **A plac
 by its median**, so a shade polygon bowed to take in the half-tone reads the paper in it
 and not the shade; the first drawing read means through `sample()` all session and got
 `0.63` where the check read `0.49`. Two places planned within `0.10` that touch are
-named at registration: that pair is a lost edge, meant or not.
+named at registration: that pair is a lost edge, meant or not. **The number itself is
+`s.compare(s.plan())`**, per place, where the `plan:` line says nothing inside `0.10`.
+Name every place; one handed over bare prints as `place 1`.
 
-**The stump moves the number.** On a toned patch the median moves `0.11` lighter under a
-stump at full strength and on hand-laid rows `0.06`, because a toned patch is dark pixels
-and white holes and the median sits on the dark ones until the stump spreads them. So a
-passage that will be stumped is laid darker than it should read, by that much, and a
-value the plan names is read after the stump.
+**The stump moves the number**, by what the holes let it spread: the median moves
+`0.03` lighter under a stump at full strength on rows leant on, `0.06` on rows laid at
+`0.55` to `0.80`, and `0.11` to `0.15` on a toned patch, because a toned patch is dark
+pixels and white holes and the median sits on the dark ones until the stump spreads
+them. So a passage that will be stumped is laid darker than it should read, by that
+much, and a value the plan names is read after the stump.
 
 ### 5. Refine the mid-tones
 
@@ -300,7 +284,9 @@ stump dragged along a path is biased along it, and over a shape it is worked eve
 **A hard edge is a narrow side stroke laid last**, after any stump near it: thirteen
 pixels wide at `pressure=0.9`, along the line, with its centre a pixel or two inside the
 outline, because the tooth leaves a line of paper speckle along a stroke whose centre
-sits on it. **A lost edge is two tones of one value butting on the line and one stump
+sits on it. **It is laid in the mass's own value**, the grade and pressure that read as
+the mass, narrow: a `2H` at full pressure reads `0.58`, and round a plane at `0.67` that
+is a dark ring, not an edge. **A lost edge is two tones of one value butting on the line and one stump
 dragged across the join**, and nothing else: two values under `0.10` apart are already
 one mass where they meet. A soft edge is a stump dragged along the line once. The check's
 `edges:` line is the share of the drawing's boundaries under `2.5` px wide.
@@ -309,10 +295,10 @@ one mass where they meet. A soft edge is a stump dragged along the line once. Th
 
 The acceptance criterion for a finished drawing is a darkest value `0.80` of the way from
 the paper to black, which is a `2B` at full pressure twice, a `4B` once, or a `6B` at
-half pressure. The first drawing laid its darkest mark at `0.91` of a `6B`'s ceiling and
-finished at `0.73` of the way, because every dark was stumped and one was lifted. The
-closing check prints `darks:` with the number; lay the darks after every stump near
-them, with the grade that reaches the value, and leave them.
+half pressure. **`darks:` reads an area**, the darkest half-percent of the sheet, about
+four thousand pixels on this one, so the dark is a place laid once at the grade that
+reaches the value, and a dark laid over a dark adds none of it. Lay the darks after
+every stump near them, and leave them.
 
 ### 8. Highlights are paper never touched
 
@@ -341,17 +327,12 @@ tooth, and the darks will come out a step lighter than you laid them. Stump the 
 and the half-tones; lay the darks after, and leave them.
 
 **You will read a mean and believe it.** `sample()` averages whatever is under the
-place. A place that straddles a form and its half-tone reads neither; the check reads
-medians and says when a tenth of a place sits far from its own median. Read the check.
-
-**A one-point line lands nothing**, and the check says so under `landed nothing:`; a
-dot is a two-point tick.
+place; the check reads medians and says when a tenth of a place sits far from its own.
+Read the check.
 
 **You will repair a passage that has failed twice.** The rule is a number so that it
 holds at the moment it is needed: **a passage that has failed twice was laid into the
-wrong shape**, and the shape is free to redraw and the only thing that is. The first
-drawing laid one passage three times, and the third version was still laid into the same
-polygon.
+wrong shape**, and the shape is free to redraw and the only thing that is.
 
 ---
 
@@ -456,7 +437,7 @@ s.plan(why="one patch", values={cell("D4"): 0.45})
 s.tone(cell("D4"), 0.45, grade="2B")
 print(s.report(since=0))                 # the plan line: inside 0.10
 s.stump(cell("D4"), strength=1.0)
-print(s.report())                        # and now it reads lighter, by about 0.11
+print(s.report())                        # and now it reads lighter, by a tenth or more
 s.look(region="C3:E5", scale=None)
 ```
 
@@ -533,9 +514,9 @@ print(s.checklist())          # or `easel check drawing.easel` from a shell
 `plan:` and `lightest:` against what you declared, with how much of the light is paper
 never touched; `values:` against the box of pencils on this paper; `edges:`; `paper:`,
 the share of the sheet no line has crossed; `pencil:`, how much of the envelope still
-shows; `boxes:`; `darks:`, how far the darks reached; `unspent:`; and the longest run of
-marks laid with no look between them. What each measures is one table under *The
-graphite medium* in [`REFERENCE.md`](REFERENCE.md#the-graphite-medium).
+shows; `boxes:`; `darks:`, how far the darks reached; `unspent:`; and a run of over
+fifteen marks laid with no look between them, when there was one. What each measures is
+one table under *The graphite medium* in [`REFERENCE.md`](REFERENCE.md#the-graphite-medium).
 
 **Then the three it cannot ask**, printed as questions with your own `why` quoted back,
 which are the ones to answer slowly: whether the thing you measured most carefully is
@@ -544,9 +525,10 @@ it; which passage you would apologise for, because the marks left are for that o
 and whether the reason you chose the subject is still there when the drawing is looked
 at small, `s.look(scale=256)`, rather than in a crop.
 
-**Two thirds of the budget unspent is a finding.** The first drawing stopped at 155 of
-400 with its two weakest passages named and left; the passage you would apologise for
-is where the rest goes.
+**The budget unspent is not a finding by itself.** Two drawings of one subject stopped
+at 154 and 138 of 400, and the `unspent:` line asked each for marks the method had no
+use for. The rest goes to the passage you would apologise for, if there is one, and
+nowhere else.
 
 ## Sign it
 

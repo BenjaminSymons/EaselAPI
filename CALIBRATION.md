@@ -328,8 +328,11 @@ What the table says, as the rules the grades are written to hold:
 - **A hard grade under a light hand lays nothing you can measure.** `4H` and `2H` at
   `p=0.25` leave the paper at `0.96` on the side, reaching 10% and 25% of the tooth; on
   the point the same pressures leave a broken line that reads in the sampler and not in
-  a median. That is the speckle of a hard sketch line, and the grade for a light tone
-  is a soft one at low pressure, not a hard one leant on.
+  a median. That is the speckle of a hard sketch line. (This bullet once ended *and the
+  grade for a light tone is a soft one at low pressure, not a hard one leant on*, read
+  off the sampler before any drawing; the first drawing and exercise 4 of the two since
+  measured the opposite for a tone, which is holes under a soft grade held lightly and
+  a few holes under a hard one leant on. The sampler's sentence was about one stroke.)
 - **Pressure is worth about a grade.** `HB` at `p=1` (`0.44`) sits between `2B` at
   `p=0.5` (`0.39`) and `2H` at `p=1` (`0.58`); one step of pressure and one step of
   grade move the value by about the same amount in the middle of the box, and the
@@ -415,17 +418,40 @@ And two the run asked for that the spec did not:
   count, the seven committed passes' longest runs were **66, 13, 20, 4, 16, 3 and 2**
   marks with rehearsals counted as looks, and 66, 18, 27, 11, 32, 3 and 2 with looks
   alone. The 66 is the ground pass, the one the round's re-measurement failed on the
-  spec's *every fifteen* and the one the draftsman named as its weakest. The line is set
-  at `30`, twice the loop's upper bound: at fifteen it fires on three passes of seven,
-  and the one pass it is right about is the one a painter would have stopped reading
-  it on. Rehearsals count, as the re-measurement counted them. Built as a finding of the
-  drawing's own; a painting is not asked, since a paint recipe lays thirty marks between
-  looks as a matter of course and the rule has not been measured on paint.
+  spec's *every fifteen* and the one the draftsman named as its weakest. The line was
+  first set at `30`, twice the loop's upper bound, because at fifteen it fired on three
+  passes of seven. Then the second drawing laid 21 table rows without a look, past the
+  guide's fifteen, and the check said nothing: the one criterion of the spec's eight
+  that drawing failed was the one the engine did not measure. Re-measured on both logs
+  (2026-10-09) with a helper call counted as **one decision**, since a rehearsal right
+  before a `hatch` looked at every line it lays: at fifteen the first drawing fires on
+  its ground pass (66) and its interior (20), and its refine pass's two runs of 16 are
+  a 15-line `hatch` and one mark, 2 and 13 decisions; the second drawing fires on its
+  table rows, 16 and 21, and nowhere else (its other nine passes ran 8 or fewer). So
+  the line is now **over `15`**, the loop's own bound, in decisions. Rehearsals count,
+  as the re-measurement counted them. Built as a finding of the drawing's own; a
+  painting is not asked, since a paint recipe lays thirty marks between looks as a
+  matter of course and the rule has not been measured on paint.
 - **`ground:` against paper never touched.** `ground_showing` reads the composite within
   `10/255` of a bare canvas, which admits graphite up to about `0.02`: the drawing read
   `5.35%` bare ground and `4.12%` paper the channel holds nothing at (`4.17%` under
   `1e-6`), and inside the named light `57.8%` against `49.2%`. The `paper:` line reads the
   channel, exact, in place of `ground:` in a drawing.
+
+And one the second drawing asked for:
+
+- **The stack-of-bars line on a crescent.** The rule reads a mark's chord, and the arcs
+  of one crescent laid along the egg's form -- the line's own remedy for a curved
+  passage -- share a chord: *15 of 15 long marks within 6 degrees of 145*, on the egg
+  pass, printed. Replayed over every committed pass of both drawings (2026-10-09): the
+  line fires three times, on the first drawing's ground (44 of 62) and refine (27 of
+  28) passes, both true, and on the egg. The marks of the two true stacks turn **0 to
+  22 degrees** between their first step and their last; the egg's arcs turn **37 to
+  175**. A mark turning `30` or more is now left out of the cluster, which silences the
+  egg (0 of 0) and moves neither true line by a mark. Sagitta over chord does not
+  separate them: the true stacks reach `0.10` and the arcs start at `0.06`. The one
+  painting with a session file, the lighthouse handover, clusters 65 of 150 long marks
+  with the gate and without, under the three-fifths share either way.
 
 What else the log measured, quoted in `DRAFTSMAN.md`:
 
