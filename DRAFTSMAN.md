@@ -9,7 +9,7 @@ open as you draw, and open the other two when a situation calls for one.
 
 | File | What it holds | When |
 |---|---|---|
-| **`DRAFTSMAN.md`** - this one | the method for graphite: the loop, the order, the mistakes, the exercises, the checklist | now, and open beside you while you draw |
+| **`DRAFTSMAN.md`** - this one | the method for graphite | now, and open beside you while you draw |
 | [`REFERENCE.md`](REFERENCE.md#the-graphite-medium) | every fact on one page; *The graphite medium* is the section | when you want to look something up |
 | [`CALIBRATION.md`](CALIBRATION.md#the-graphite-medium) | the measurement behind every number quoted here | when a number is the question |
 
@@ -76,8 +76,8 @@ s.hatch(ellipse((0.5, 0.55), 0.2, 0.14), grade="2B", tip="side", pressure=0.8)
    at two angles twenty degrees apart; sixteen strokes for a far plane, fifty for a near
    one, `stump(place, 1.0)` once over each. Not `tone()`: that is ten lines a cell.
 3. **Lay each curved passage along its own shape**: arcs of its outline scaled or
-   offset, cut into runs round whatever stands in it, the pressure varying along the
-   arc. Side strokes hatched *across* a curved shape end on its outline in steps, and a
+   offset, cut into runs half a stroke short of whatever stands in it, the pressure
+   varying along the arc. Side strokes hatched *across* a curved shape end on its outline in steps, and a
    row of steps is a staircase.
 4. **Check the values before anything else.** Write the plan down where the check can
    see it, read the places back after every pass, and **read medians, not means**: the
@@ -159,6 +159,8 @@ peaks of the tooth: how a mass is laid. A pressure list on a hand-laid `line()` 
 helpers do that for their own flipped passes. **A side stroke at one pressure ends in a
 block at both ends**, and a short one reads as a rectangle: a stroke in the open, and
 every arc, wants a list that falls to its ends, which fade over their last thirty pixels.
+**A list that falls to its ends reads about a grade lighter than its peak**, so a passage
+laid that way wants the next softer grade, or its peak leant on.
 
 ---
 
@@ -177,7 +179,7 @@ arrangement, look, move it, draw it again; `s.thumbnail({shape: value})` is the 
 flat and small, which is where a silhouette reads or does not. Put the shapes, named,
 in a `prelude.py` for every pass to lay to. Decide the light's direction now and draw
 every round thing's terminator in the envelope: which half is in shade decides which
-edge is lost, and the first drawing decided it late.
+edge is lost.
 
 **Build a place to exclude what is to be kept.** No helper takes `clip=`, and a stump
 or an eraser acts on everything under the place it is handed: a lift over a floor took
@@ -186,10 +188,9 @@ drawing's only hold.
 
 ### 2. Lay the big planes as rows by hand
 
-**What a plane costs.** `tone()` measures as it lays and lands within two hundredths,
-and it costs ten lines a grid cell; a plane of twenty cells is two hundred. `hatch()`
-with the side costs the same. A plane is laid instead as broad side strokes by hand, at
-two angles, the way the card's example and exercise 3 lay one.
+**What a plane costs.** `tone()` costs ten lines a grid cell; a plane of twenty cells
+is two hundred. `hatch()` with the side costs the same. A plane is laid instead by hand,
+as the card's example and exercise 3 lay one.
 
 **An even tone is a hard grade leant on, not a soft grade held lightly.** The paper's
 tooth is loud: `HB` at `0.5` leaves 18% of a cell bare paper, `2B` at `0.5` 4%, and the
@@ -197,9 +198,10 @@ holes read as a field of white points at full size. `2H` at `1.0` leaves 2% and 
 `0.9` none. Hand-laid at `width=0.07`, `2H` at `0.55` to `0.80` reads about `0.70` and
 `HB` at `0.55` to `0.72` about `0.52` after the stump, which is the whole range a far and
 a near plane want; a pressure list along each row makes the plane lighter toward its
-light. **The rows stop half a stroke short of anything standing on the plane**: a side
-stroke's half-width crosses a hatch's outline by 12 px at the default width and 35 px
-at `0.07`, and `hatch` cuts its paths, not its widths. The band beside the thing is laid
+light. **Any run cut round a thing standing in it stops half the stroke's width and a
+few pixels short of the thing**, rows and arcs alike: a side stroke's half-width crosses
+the outline by 12 px at the default width and 35 px at `0.07`, and `hatch` cuts its
+paths, not its widths. The band beside the thing is laid
 in the thing's own pass, along its silhouette, as one layer where the rows are two, and
 **it stops where a second thing standing in the first breaks the silhouette**: a band
 and an edge stroke each laid across that crown cost two lifts to take back.
@@ -305,7 +307,7 @@ every stump near them, and leave them.
 A highlight lifted is a value: an eraser leaves a ghost, and a `6B` passage lifted hard
 reads `0.74` where the paper reads `0.96`. `plastic` takes most of a passage in one pass
 with a clean edge; `kneaded` takes a share with a soft one; both are charged, and both
-act on everything under the place. Plan the light as a place no line crosses.
+act on everything under the place.
 
 ---
 
@@ -564,6 +566,6 @@ easel film drawing.easel --html viewer                              # scrubs to 
 
 A script given to `easel run` has `s` and the whole API in scope, and a `prelude.py`
 beside the session file runs first, in the same scope: the shapes, the helpers and the
-plan live there. `--capture` keeps every look, rehearsal and pass beside the log for the
-film and the viewer. After every pass `run` prints the budget line, the pass's dearest
+plan live there. `--capture` keeps every look, rehearsal and pass beside the log. After
+every pass `run` prints the budget line, the pass's dearest
 calls, and the check. Read it before the next pass.

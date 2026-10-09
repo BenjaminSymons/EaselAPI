@@ -1,0 +1,16 @@
+checklist for this painting -- 113 of 400 marks spent
+  plan: 9 of 9 places inside 0.10
+  lightest: egg_lit reads 0.96 as a place, 0.96 at its brightest twentieth, the lightest of the 9 places planned; 89% of it paper never touched
+  subject: 40 of 113 marks so far (35%), against 45% planned -- behind, if the subject is finished
+  values: 0.47-0.83 of a box that reaches 0.04-0.96, clusters at 0.50, 0.62, 0.90; a clear light, mid and dark
+  edges: 35% of edges are under 2.5 px wide, median 3.3 px
+  paper: 2.75% of the canvas is paper never touched
+  pencil: the envelope still shows over 1.31% of the canvas -- export(sketch=False) leaves it out
+  boxes: no masses laid yet
+  darks: the darkest half-percentile reads 0.14, 0.85 of the way from paper to black
+  unspent: 287 of 400 unspent (72%) -- name the weakest passage and spend them there
+
+three this cannot answer, and they are the ones to answer slowly:
+  - Cover the thing you measured most carefully. Is it still attached to the picture -- and is the lightest mass the one you planned to be?
+  - Which passage would you apologise for? That is the one the marks left are for, not the one you have most recently been enjoying.
+  - You wrote: "one light left alone: the egg's lit side and the rim are paper, and everything else is laid darker so that they read as the light". Is that reason still in the picture, looked at small -- s.look(scale=256)?

@@ -222,6 +222,29 @@ fact prints only over 15. The run's own twelve candidates and four for the engin
 at the end of its `NOTES.md`, each re-measured and each a hypothesis until a fourth
 session draws against it.
 
+**Two of run 3's candidates, folded into `DRAFTSMAN.md`**, the two with a measurement
+behind them: a pressure list that falls to its ends reads about a grade lighter than
+its peak (`+0.07` and `+0.08` on the same rows, flat against bell), so a passage laid
+that way wants the next softer grade; and any run cut round a thing standing in it,
+rows and arcs alike, stops half the stroke's width and a few pixels short of the
+thing, which is section 2's half-width fact said once for every run rather than for
+rows beside a plane. Paid for by trimming the file table, the plane-cost paragraph
+and three sentences that said again what the card says.
+
+**Step 6, run 4: those two, measured.** `drawings/egg_in_bowl_4/`: the same words and
+a fourth seed, a fresh session, 113 of 400 marks, with its passes, its exercises, its
+session file, its two films and its notes, re-measured. **Eight of the spec's eight
+criteria**, the first run to meet them all: a longest run of 12, every planned place
+inside `0.10`, darks at `0.85`, the egg's light 89% paper never touched, replay exact.
+The bell-list rule held in the mid-tones and was not carried to the darks, which seven
+softer arcs missed before two `6B` reached; the cut-margin rule held, and what took the
+light afterwards was stumps and edge strokes beside it, which the rule does not name.
+The guide's own signature tick landed nothing on this drawing: re-measured, it carries
+5 to 9 units on bare paper and `0.37` of one over a stumped `HB` tone, so the recipe
+holds on paper and not on a toned corner. The run's ten candidates and the standing
+four for the engine are at the end of its `NOTES.md`; `boxes:` printed in a drawing's
+check and the `plan:` line without each place's reading are now asked for by two runs.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with
