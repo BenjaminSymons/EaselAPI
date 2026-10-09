@@ -334,7 +334,30 @@ def test_a_drawings_standing_lines_are_rows_of_the_reference_table(tmp_path) -> 
         said = s.checklist()
     printed = set(re.findall(r"^  ([a-z][a-z ]*:)", said, re.M))
     assert {"landed nothing:", "plan:", "lightest:", "subject:", "values:", "edges:",
-            "paper:", "pencil:", "boxes:", "darks:", "unspent:"} <= printed, said
+            "paper:", "pencil:", "darks:", "unspent:"} <= printed, said
+    # A drawing lays no mass of the paint's kind, and the line that counted them could
+    # only say so; two draftsmen asked what it was for.
+    assert "boxes:" not in printed, said
     lines = text.split("| Line |")[1]
     named = set(re.findall(r"`([a-z][a-z ]*:)`", lines))
     assert printed <= named, f"no row for {sorted(printed - named)}"
+
+
+def test_a_drawings_plan_line_carries_every_places_reading(tmp_path) -> None:
+    """Two draftsmen running called `compare(s.plan())` after every pass because the
+    `plan:` line said nothing of a place inside the threshold; a drawing's line now
+    carries each one's median. A painting's line is as it was."""
+    s = make(tmp_path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s.plan(why="the light", values={"A1:H4": 0.9, "A5:H8": 0.5}, lightest="A1:H4")
+        s.hatch(span("A5", "H8"), angle=0, grade="2B", tip="side", pressure=0.8)
+    line = [ln for ln in s.checklist().splitlines() if ln.strip().startswith("plan:")][0]
+    assert re.search(r"plan: \d of 2 places inside 0\.10.*A1:H4 0\.\d\d", line), line
+    p = make(tmp_path, medium="paint")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        p.plan(why="the light", values={"A1:H4": 0.9, "A5:H8": 0.5}, lightest="A1:H4")
+        p.stroke([(0.1, 0.8), (0.9, 0.8)], "flat", "burnt_umber", size=0.1)
+    line = [ln for ln in p.checklist().splitlines() if ln.strip().startswith("plan:")][0]
+    assert "A1:H4 0." not in line, line

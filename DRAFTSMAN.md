@@ -76,8 +76,8 @@ s.hatch(ellipse((0.5, 0.55), 0.2, 0.14), grade="2B", tip="side", pressure=0.8)
    at two angles twenty degrees apart; sixteen strokes for a far plane, fifty for a near
    one, `stump(place, 1.0)` once over each. Not `tone()`: that is ten lines a cell.
 3. **Lay each curved passage along its own shape**: arcs of its outline scaled or
-   offset, cut into runs half a stroke short of whatever stands in it, the pressure
-   varying along the arc. Side strokes hatched *across* a curved shape end on its outline in steps, and a
+   offset, cut into runs a sixth of a stroke short of whatever stands in it, the
+   pressure varying along the arc. Side strokes hatched *across* a curved shape end on its outline in steps, and a
    row of steps is a staircase.
 4. **Check the values before anything else.** Write the plan down where the check can
    see it, read the places back after every pass, and **read medians, not means**: the
@@ -198,10 +198,10 @@ holes read as a field of white points at full size. `2H` at `1.0` leaves 2% and 
 `0.9` none. Hand-laid at `width=0.07`, `2H` at `0.55` to `0.80` reads about `0.70` and
 `HB` at `0.55` to `0.72` about `0.52` after the stump, which is the whole range a far and
 a near plane want; a pressure list along each row makes the plane lighter toward its
-light. **Any run cut round a thing standing in it stops half the stroke's width and a
-few pixels short of the thing**, rows and arcs alike: a side stroke's half-width crosses
-the outline by 12 px at the default width and 35 px at `0.07`, and `hatch` cuts its
-paths, not its widths. The band beside the thing is laid
+light. **A run that ends at a thing stops a sixth of the stroke's width short of it**,
+12 px at `0.07`, since a side stroke's value runs that far past its last point; **a run
+that passes beside a thing keeps half the width clear**, 35 px at `0.07`, and `hatch`
+cuts its paths, not its widths. The band beside the thing is laid
 in the thing's own pass, along its silhouette, as one layer where the rows are two, and
 **it stops where a second thing standing in the first breaks the silhouette**: a band
 and an edge stroke each laid across that crown cost two lifts to take back.
@@ -217,28 +217,7 @@ row, and the ends read as steps. **Build the passage as arcs of its own shape**,
 from it, each arc a `line()` with a pressure list that is heavier where the form turns
 from the light, cut into runs round whatever stands in it. For a hollow thing, the arcs
 run round the inside; for a form, the arcs are cross-contours, and each is shorter than
-the one before so that their ends trace the terminator.
-
-```python
-import math
-from easel import Session, ellipse
-
-s = Session(900, 600, medium="graphite", seed=3)
-cx, cy, rx, ry = 0.5, 0.5, 0.2, 0.26
-
-def arc(k, t0, t1):
-    return [(cx + rx * k * math.cos(math.radians(t)), cy + ry * k * math.sin(math.radians(t)))
-            for t in range(t0, t1 + 1, 6)]
-
-for k, grade, p, t0, t1 in ((0.96, "HB", 0.7, -70, 130), (0.86, "2B", 0.9, -60, 120),
-                            (0.76, "2B", 0.8, -50, 108), (0.66, "HB", 0.8, -38, 92)):
-    pts = arc(k, t0, t1)
-    n = len(pts)
-    s.line(pts, grade, pressure=[p * (0.5 + 0.5 * math.sin(math.pi * i / (n - 1)))
-                                 for i in range(n)], tip="side", width=0.014, smooth=False)
-s.stump(arc(0.6, -40, 110), strength=0.7, width=0.035)     # along the terminator
-s.look()
-```
+the one before so that their ends trace the terminator; exercise 5 lays one.
 
 A silhouette made of two shapes is one closed run of points round both, or it leaves a
 notch of paper where they meet.
@@ -251,10 +230,10 @@ notch of paper where they meet.
 from easel import Session, span
 
 s = Session(1024, 768, medium="graphite", seed=4)
-far, near = span("A1", "H3"), span("A4", "H8")
+far, near = "A1:H3", "A4:H8"               # strings; span() has no name
 s.plan(why="the light is the paper, and everything else is drawn to make it read as light",
        values={far: 0.70, near: 0.52}, lightest=far, subject_share=0.45)
-s.hatch(near, angle=0, grade="HB", pressure=0.9, tip="side", width=0.07)
+s.hatch(span("A4", "H8"), angle=0, grade="HB", pressure=0.9, tip="side", width=0.07)
 print(s.report(since=0))        # the plan, the light, the values and the paper, read
 ```
 
@@ -263,9 +242,9 @@ the sign being the drawing minus the plan, and which place is lightest. **A plac
 by its median**, so a shade polygon bowed to take in the half-tone reads the paper in it
 and not the shade; the first drawing read means through `sample()` all session and got
 `0.63` where the check read `0.49`. Two places planned within `0.10` that touch are
-named at registration: that pair is a lost edge, meant or not. **The number itself is
-`s.compare(s.plan())`**, per place, where the `plan:` line says nothing inside `0.10`.
-Name every place; one handed over bare prints as `place 1`.
+named at registration: that pair is a lost edge, meant or not. **The `plan:` line
+carries every place's reading**, and `s.compare(s.plan())` draws the heat map. Name
+every place; one handed over bare prints as `place 1`.
 
 **The stump moves the number**, by what the holes let it spread: the median moves
 `0.03` lighter under a stump at full strength on rows leant on, `0.06` on rows laid at
@@ -280,6 +259,8 @@ The grade for a half-tone is a harder one leant on, not a softer one held off: `
 `0.85` is the half-tone that turns into the light, `HB` at `0.95` the tone beside it, and
 a `2B` at `0.9` the core. One stump along the arcs closes the tooth between them; a
 stump dragged along a path is biased along it, and over a shape it is worked every way.
+**A tone between `0.70` and `0.85` is `2H` held off and stumped at full strength
+twice**; it is speckle until the second stump.
 
 ### 6. Edges: lost and found
 
@@ -290,8 +271,7 @@ sits on it. **It is laid in the mass's own value**, the grade and pressure that 
 the mass, narrow: a `2H` at full pressure reads `0.58`, and round a plane at `0.67` that
 is a dark ring, not an edge. **A lost edge is two tones of one value butting on the line and one stump
 dragged across the join**, and nothing else: two values under `0.10` apart are already
-one mass where they meet. A soft edge is a stump dragged along the line once. The check's
-`edges:` line is the share of the drawing's boundaries under `2.5` px wide.
+one mass where they meet. A soft edge is a stump dragged along the line once.
 
 ### 7. Darks last, unstumped
 
@@ -299,15 +279,20 @@ The acceptance criterion for a finished drawing is a darkest value `0.80` of the
 the paper to black, which is a `2B` at full pressure twice, a `4B` once, or a `6B` at
 half pressure. **`darks:` reads an area**, the darkest half-percent of the sheet, about
 four thousand pixels on this one, so the dark is a place laid once at the grade that
-reaches the value, and a dark laid over a dark adds none of it. Lay the darks after
-every stump near them, and leave them.
+reaches the value, and a dark laid over a dark adds none of it. **A dark laid with a
+list that falls to its ends wants the softer grade**: seven `4B` arcs at bells to half
+read `0.78` of the way, two `6B` at a bell to `0.9` read `0.85`. Lay
+the darks after every stump near them, and leave them.
 
 ### 8. Highlights are paper never touched
 
 A highlight lifted is a value: an eraser leaves a ghost, and a `6B` passage lifted hard
 reads `0.74` where the paper reads `0.96`. `plastic` takes most of a passage in one pass
 with a clean edge; `kneaded` takes a share with a soft one; both are charged, and both
-act on everything under the place.
+act on everything under the place. **Every stump or edge stroke beside the light takes
+two to five percent of its paper**: cut a stump's path round the light by half its
+width, as a row is, and count the treatments before laying them; the `lightest:` line
+says what each took.
 
 ---
 
@@ -340,7 +325,7 @@ wrong shape**, and the shape is free to redraw and the only thing that is.
 
 ## Nine exercises
 
-They take a minute each. Give each `look()` a `path=` of its own.
+Give each `look()` a `path=` of its own.
 
 **1. The box of pencils.** Every grade at three pressures, on the side. Look at it at
 full size: which grades speckle at which pressure, and where each one stops.
@@ -537,10 +522,12 @@ nowhere else.
 When you have decided it is finished, sign it: up to five marks that do not come out of
 the budget, so long as each carries `note="signature"`. A mark, not a name: small, in a
 corner, close in value to what it sits on. **A dot is a two-point tick**, since a
-one-point line lands nothing.
+one-point line lands nothing, and **over a tone the tick is leant on**: `HB` at `0.6`
+lands on paper, not on a stumped corner.
 
 ```python
-s.line([(0.90, 0.95), (0.915, 0.942)], "HB", pressure=0.6, tip="point", note="signature")
+s.line([(0.90, 0.95), (0.93, 0.942)], "HB", pressure=0.9, tip="point", width=0.004,
+       note="signature")
 s.export("drawing.png", sketch=False)    # without the envelope
 ```
 

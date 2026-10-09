@@ -242,8 +242,8 @@ and `easel film` plays the drawing back a mark at a time with those looks held w
 they were taken: an MP4, a GIF or a directory of PNG frames, and with `--html` a page
 that scrubs to any mark beside the script line that laid it.
 [`drawings/`](https://github.com/Gemberkoekje/EaselAPI/tree/main/drawings) holds the
-four test drawings of `SPEC.md`, a hen's egg in a bowl drawn four times from the same
-words by four fresh sessions: the first with no guide, the second against the guide
+five test drawings of `SPEC.md`, a hen's egg in a bowl drawn five times from the same
+words by five fresh sessions: the first with no guide, the second against the guide
 written from it, and each later one against what the run before changed in it. Each
 has its passes, its session file, its two films and its notes, re-measured against the
 spec's criteria.

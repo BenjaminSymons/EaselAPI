@@ -5234,7 +5234,8 @@ class Session:
         if paid and not self._counting and (self._plan.values
                                             or self._plan.lightest is not None):
             plan_view = self._value_view()
-            for line in (self._plan.value_line(plan_view),
+            for line in (self._plan.value_line(plan_view,
+                                               readings=self.medium == "graphite"),
                          self._plan.lightest_line(plan_view, paper=self._lightest_paper())):
                 if line:
                     lines.append(f"  {line}")
@@ -5558,7 +5559,8 @@ class Session:
         if paid and not self._counting and (self._plan.values
                                             or self._plan.lightest is not None):
             plan_view = self._value_view()
-            for line in (self._plan.value_line(plan_view),
+            for line in (self._plan.value_line(plan_view,
+                                               readings=self.medium == "graphite"),
                          self._plan.lightest_line(plan_view, paper=self._lightest_paper())):
                 if line:
                     lines.append(f"  {line}")
@@ -5567,7 +5569,11 @@ class Session:
             lines.append(f"  {subject}")
         if paid and not self._counting:
             lines += [f"  {one}" for one in self._canvas_lines(plan_view=plan_view)]
-        lines.append(f"  {checklist.boxes_line(*checklist.mass_counts(records))}")
+        # A drawing lays no mass verb of the paint's kind, so its line could only ever
+        # say *no masses laid yet*, which two draftsmen running asked about; it is
+        # a painting's line.
+        if self.medium != "graphite":
+            lines.append(f"  {checklist.boxes_line(*checklist.mass_counts(records))}")
         # A drawing's darks come last by the method, so where they reached is a
         # closing question and not a pass's: beside the boxes and the budget.
         if paid and not self._counting and self.medium == "graphite":

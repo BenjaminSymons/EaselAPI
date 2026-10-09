@@ -297,7 +297,7 @@ class Plan:
 
     # -- the lines the check prints ----------------------------------------------
     def value_line(self, value_view: np.ndarray,
-                   threshold: float = VALUE_THRESHOLD) -> str:
+                   threshold: float = VALUE_THRESHOLD, readings: bool = False) -> str:
         """One line: how many places are painted as promised, and which are not.
 
             plan: 5 of 6 places inside 0.10; halo +0.14 (18% of it lighter by more than 0.15)
@@ -308,6 +308,16 @@ class Plan:
         places is one nobody finishes reading. A place it names that is split says so
         in brackets -- a miss that is half one value and half another is a different
         repair from a miss that is all of one.
+
+        With ``readings`` the line also carries what every place inside the threshold
+        reads, as its median, in the plan's own order::
+
+            plan: 9 of 9 places inside 0.10: table_far 0.62, table_near 0.52, rim 0.91
+
+        A drawing asks for it: its places are read by their numbers after every pass,
+        the guide says to read them, and two draftsmen running found the line silent
+        inside the threshold and called ``compare(s.plan())`` after every pass to get
+        the same numbers. A painting's line is unchanged; its painters have not asked.
         """
         if not self.values:
             return ""
@@ -324,6 +334,10 @@ class Plan:
                               for p, delta, got in out[:3])
             more = f"; and {len(out) - 3} more" if len(out) > 3 else ""
             line += f"; {shown}{more}"
+        if readings and inside:
+            held = ", ".join(f"{p.name} {got.median:.2f}" for p, delta, got in deltas
+                             if abs(delta) <= threshold)
+            line += f"{'; inside' if out else ''}: {held}"
         return line
 
     def lightest_line(self, value_view: np.ndarray, paper: float | None = None) -> str:

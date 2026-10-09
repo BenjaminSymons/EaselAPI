@@ -245,6 +245,39 @@ holds on paper and not on a toned corner. The run's ten candidates and the stand
 four for the engine are at the end of its `NOTES.md`; `boxes:` printed in a drawing's
 check and the `plan:` line without each place's reading are now asked for by two runs.
 
+**The two lines two draftsmen asked about.** A drawing's closing check no longer
+prints `boxes:`, which could only ever say *no masses laid yet* there, since a drawing
+lays no mass of the paint's kind; and a drawing's `plan:` line carries what every
+place inside the threshold reads, as its median, in the plan's own order -- *plan: 9
+of 9 places inside 0.10: table_far 0.62, ...* -- where runs 3 and 4 both called
+`compare(s.plan())` after every pass to get the same numbers. A painting's two lines
+are unchanged; its painters have not asked.
+
+**Run 4's measured candidates, folded into `DRAFTSMAN.md`**: a dark laid with a list
+that falls to its ends wants the softer grade, said in step 7 with the run's numbers;
+a tone between `0.70` and `0.85` is `2H` held off and stumped twice; every stump or
+edge stroke beside the light takes two to five percent of its paper, so a stump's path
+is cut round the light as a row is and the treatments beside it are counted first;
+and the signature is leant on over a tone, with the example rewritten to the stroke
+that lands (`CALIBRATION.md`, *The signature tick over a tone*). Paid for by cutting
+section 3's arcs example, which exercise 5 lays.
+
+**Step 6, run 5: those, measured.** `drawings/egg_in_bowl_5/`: the same words and a
+fifth seed, a fresh session, 143 of 400 marks, seven of the spec's eight criteria, one
+place lost by a hundredth to a contact dark laid to satisfy `darks:`. All four of run
+4's folded candidates held, one sharpened (a `6B` bell's ends fall under `0.15`) and
+one exceeded in its number (stumps laid *across* the light took 21%, not two to five).
+The new `plan:` line was read in place of any probe, and `boxes:` was not missed. Two
+corrections to the guide the run measured: run 3's cut-margin rule over-cut a run that
+ends at a thing, since a side stroke's value runs a sixth of its width past its last
+point and not half, and the rows cut 40 px short left a 20 px halo of paper (replayed
+and read in rings, not the 40 to 50 the agent saw); and section 4's example built its
+places with `span()`, which has no name, under a sentence saying *name every place*.
+The run's strongest candidate is new: a highlight that is paper against a floor that
+is paper has no edge, and the plan's pairs line at `0.03` apart was the warning the
+agent read as the subject's one light; ten candidates in all at the end of its
+`NOTES.md`, each a hypothesis until a sixth session draws against it.
+
 ## [0.8.0] — 2026-10-01
 
 **Released.** Shipped as `v0.8.0`: `easel-paint` 0.8.0 on PyPI, the GitHub release with

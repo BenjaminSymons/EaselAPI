@@ -453,6 +453,19 @@ And one the second drawing asked for:
   painting with a session file, the lighthouse handover, clusters 65 of 150 long marks
   with the gate and without, under the three-fifths share either way.
 
+And one the fourth drawing asked for:
+
+- **The signature tick over a tone.** The guide's example, an `HB` tick at `0.6` on the
+  point, 15 px, two points, landed nothing on the fourth drawing's toned corner, and
+  was undone. Laid again (2026-10-10): on **bare paper** it carries **5.1 and 9.3
+  units** at two seeds and lands; over a stumped `HB` tone, eight side rows at `0.9`
+  and one stump at full strength, it carries **`0.37` of a unit** and a 2 px dot
+  `0.06`, both under the one unit `landed nothing:` reads; a 30 px `HB` stroke at
+  `0.9`, `width=0.004`, carries `3.3` units over the same tone. Graphite lays flatter
+  where the channel already holds it (the medium has no `filled` flag, and does not
+  need one for this), so *close in value to what it sits on* and *HB at 0.6* cannot
+  both hold on a toned corner. The guide's example is now the leant-on stroke.
+
 What else the log measured, quoted in `DRAFTSMAN.md`:
 
 - **What a plane costs.** `tone(cell, 0.36, "2B")` lays 10 lines; `hatch(cell,

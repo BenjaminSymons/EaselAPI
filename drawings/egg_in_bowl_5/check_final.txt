@@ -1,0 +1,15 @@
+checklist for this painting -- 143 of 400 marks spent
+  plan: 7 of 8 places inside 0.10; cast_core -0.11 (21% of it lighter by more than 0.15); inside: table_far 0.70, table_near 0.58, cast_table 0.41, egg_lit 0.96, bowl_lit 0.87, egg_shade 0.49, bowl_shadow 0.36
+  lightest: egg_lit reads 0.96 as a place, 0.96 at its brightest twentieth, the lightest of the 8 places planned; 79% of it paper never touched
+  subject: 13 of 143 marks so far (9%), against 45% planned -- behind, if the subject is finished
+  values: 0.42-0.85 of a box that reaches 0.04-0.96, clusters at 0.38, 0.63, 0.78; a clear light, mid and dark
+  edges: 29% of edges are under 2.5 px wide, median 3.9 px
+  paper: 1.48% of the canvas is paper never touched
+  pencil: the envelope still shows over 1.67% of the canvas -- export(sketch=False) leaves it out
+  darks: the darkest half-percentile reads 0.17, 0.82 of the way from paper to black
+  unspent: 257 of 400 unspent (64%) -- name the weakest passage and spend them there
+
+three this cannot answer, and they are the ones to answer slowly:
+  - Cover the thing you measured most carefully. Is it still attached to the picture -- and is the lightest mass the one you planned to be?
+  - Which passage would you apologise for? That is the one the marks left are for, not the one you have most recently been enjoying.
+  - You wrote: 'a white egg in a white bowl is the light drawn as paper, and everything else is drawn to make that paper read as light'. Is that reason still in the picture, looked at small -- s.look(scale=256)?

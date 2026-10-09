@@ -641,14 +641,14 @@ script.
 | Line | Measures | Said |
 |---|---|---|
 | `landed nothing:` | the marks that carried under one unit of paint — *NO PAINT LANDED* in `easel log` — each by the line that laid it, a mass call's by how many of its passes, with the cause its record shows: half its path or more outside its clip, a round dab under the size its press lands from, an oriented tip under four pixels, a bristle loaded under `0.5` | only when a pass laid one: *landed nothing: the dab at p06.py:39 (a round tip under its cliff at press=1); 6 passes of the block_in at p05.py:12 (outside its clip)* |
-| `plan:`, `lightest:` | the canvas against what the plan declared: *What the plan changes*, below | once a plan declares values, or a lightest place |
+| `plan:`, `lightest:` | the canvas against what the plan declared: *What the plan changes*, below. In a drawing `plan:` also carries what every place inside the threshold reads, as its median | once a plan declares values, or a lightest place |
 | `subject:` | the subject's share of the marks so far, against `subject_share` if given | wherever a mark is noted `subject` |
 | `values:` | the 5th to 95th percentile of the values view against what the palette reaches, and the three clusters it splits into | after every pass; it says so when the range stays on one side of the box's middle or two clusters sit under `0.10` apart — or, under a declared `key=`, whether the picture has kept it |
 | `edges:` | the share of the picture's edges under `2.5` px wide | after every pass |
 | `ground:` | the share of the canvas that is **still bare ground** | after every pass; it says so under `0.5%` |
 | `paper:` | in a drawing, in place of `ground:`: the share of the sheet that is **paper never touched**, read off the graphite channel | after every pass of a drawing; it says so under `0.5%` |
 | `pencil:` | graphite still showing; in a drawing, how much of the envelope still shows | left off once there is none |
-| `boxes:`, `unspent:` | the masses laid in a rectangle, and what is left of the budget | in the closing checklist only |
+| `boxes:`, `unspent:` | the masses laid in a rectangle, and what is left of the budget | in the closing checklist only; `boxes:` in a painting's, since a drawing lays no mass of that kind |
 | `darks:` | in a drawing, how far the darkest half-percentile reached from the paper toward black, against `0.80` | in the closing checklist only |
 
 Their thresholds are under *The measurement lines, on the finished canvases* in
