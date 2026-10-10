@@ -307,6 +307,21 @@ def _is_place_object(entry: dict) -> bool:
             and len([k for k in entry if k in _BUILDERS]) == 1)
 
 
+def _no_paint(verb: str, drawing: bool) -> None:
+    """Refuse a paint verb in a drawing's plan, here, and not at the engine's call.
+
+    The engine refuses a paint verb on a graphite session too, but at the rehearsal,
+    which is after the plan has been checked and echoed. A plan that will be refused
+    is refused where it is written.
+    """
+    if drawing:
+        raise ValueError(
+            f"{verb} is a paint verb, and this plan is a drawing's. A drawing's entry is "
+            "points with a 'grade' (a line), or a 'hatch', 'scribble' or 'contour' "
+            "naming its place. A bare list of points is a line."
+        )
+
+
 def _plan(entries, medium: str = "paint") -> tuple[list, list[str]]:
     """A JSON plan, as the planning tools take it, and the Python that paints it.
 
@@ -337,11 +352,13 @@ def _plan(entries, medium: str = "paint") -> tuple[list, list[str]]:
                     specs.append({"points": _points(entry)})
                     lines.append(f"s.stroke({_py_points(entry)})")
                 continue
+            _no_paint("block_in", drawing)
             specs.append(_place(entry))
             lines.append(f"s.block_in({_py_place(entry)})")
             continue
 
         if _is_place_object(entry):
+            _no_paint("block_in", drawing)
             specs.append(_place(entry))
             lines.append(f"s.block_in({_py_place(entry)})")
             continue
@@ -363,6 +380,7 @@ def _plan(entries, medium: str = "paint") -> tuple[list, list[str]]:
             lines.append(f"s.{kind}({_py_place(source)}"
                          f"{_echo_args(entry, kind, 'points', 'label')})")
         elif "cover" in entry:
+            _no_paint("cover", drawing)
             _check("cover", entry)
             source = entry["cover"]
             specs.append(dict(entry, cover=_place(source)))
@@ -374,6 +392,7 @@ def _plan(entries, medium: str = "paint") -> tuple[list, list[str]]:
             # A passage names the two colours it steps between, which is what tells
             # it from a mass filling the same place -- and what used to be missed:
             # a scumble-shaped entry carrying `shape=` was priced as a block-in.
+            _no_paint("scumble", drawing)
             _check("scumble", entry)
             source = entry.get("band", entry.get("shape", entry.get("region")))
             key = "band" if "band" in entry else (
@@ -385,18 +404,21 @@ def _plan(entries, medium: str = "paint") -> tuple[list, list[str]]:
             # ``edge`` is kept here and dropped for a sweep: on a mass it is
             # block_in's ragged/clean/hard boundary and belongs in the echoed call,
             # and on a sweep it is the boundary, which is passed positionally.
+            _no_paint("block_in", drawing)
             _check("mass", entry)
             source = entry.get("shape", entry.get("region"))
             specs.append(dict(entry, shape=_place(source)))
             lines.append(f"s.block_in({_py_place(source)}"
                          f"{_echo_args(entry, 'shape', 'region', 'points', 'label')})")
         elif "points" not in entry and "edge" in entry:
+            _no_paint("sweep", drawing)
             _check("sweep", entry)
             edge = entry["edge"]
             specs.append(dict(entry, edge=_edge(edge)))
             lines.append(f"s.sweep({_py_edge(edge)}"
                          f"{_echo_args(entry, 'shape', 'region', 'edge', 'points', 'label')})")
         elif "points" in entry:
+            _no_paint("stroke", drawing)
             _check("stroke", entry)
             specs.append(dict(entry, points=_points(entry["points"])))
             lines.append(f"s.stroke({_py_points(entry['points'])}"
@@ -884,7 +906,7 @@ def build_server() -> MCPServer:
     def look(session: str, region: Place | None = None, grid: bool | str = False,
              values: bool | None = None, reference: str = "", diff: bool = False,
              scale: int | None = None, sketch: bool = True, marks: bool = True,
-             output: str = "") -> list:
+             tooth: bool = False, output: str = "") -> list:
         """Look at the canvas. Returns the PNG, and the path it was written to.
 
         The most important call in the API. Look every five to fifteen strokes.
@@ -908,6 +930,8 @@ def build_server() -> MCPServer:
             marks: draw the landmarks. false hides them and their labels, which sit
                 over the details they name -- take them off before judging the
                 picture.
+            tooth: a drawing's question, asked of the bare paper: blue where no
+                graphite has landed, amber where a light 2H lead would speckle.
             output: where to write the PNG. Defaults to out_dir/look_NNN.png.
         """
         s = _load(session)
@@ -920,6 +944,7 @@ def build_server() -> MCPServer:
             diff=diff,
             sketch=sketch,
             marks=marks,
+            tooth=tooth,
             path=output or None,
         )
         s.save(session)

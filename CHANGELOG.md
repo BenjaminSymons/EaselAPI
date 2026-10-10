@@ -37,6 +37,19 @@ what was done about them in [`SUGGESTIONS.md`](SUGGESTIONS.md), and the method i
 
 ## [Unreleased]
 
+**Severed from upstream, and drawing made the product.** This repository no longer tracks
+`upstream` (easel-paint). [`CLAUDE.md`](CLAUDE.md) says what still binds and what does not.
+
+- A graphite session refuses the paint verbs (`stroke`, `dab`, `smudge`, `glaze`,
+  `block_in`, `sweep`, `cover`, `scumble`, `dry`), and the server's plan refuses a paint
+  entry where it is written. A painting is unchanged and may still draw in graphite beside
+  its paint. A log that holds a paint record from before the refusal still replays.
+- `look(tooth=True)`, the spec's tooth view: blue where no graphite has landed, amber where
+  a light 2H would break up on the tooth rather than lay flat. The server's `look` takes it
+  too, and a film holds it with the look.
+- `DRAFTSMAN.md` has no word ceiling. Its card, `The first hour`, is still held to
+  `CARD_WORDS`.
+
 **The graphite medium, step 2 of `SPEC.md`: the channel and the stroke.** Added beside
 the paint and never through it — every stored golden but the sampler's is unchanged,
 and the sampler's moved only because it gained a paper.

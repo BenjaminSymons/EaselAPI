@@ -406,8 +406,10 @@ Textures: `smooth`, `linen`, `rough`, and `cartridge` — a drawing paper, betwe
 
 `Session(medium="graphite")` declares a drawing: the paper is `cartridge` unless another
 texture is named, `look()` is a values view unless `values=False`, and the file keeps the
-declaration. It refuses nothing — the paint verbs still work, and `pencil()` still lays
-its free underdrawing — because the engine refuses nothing.
+declaration. A drawing has no paint: the paint verbs (`stroke`, `dab`, `smudge`, `glaze`,
+`block_in`, `sweep`, `cover`, `scumble`, `dry`) raise on it, and say what draws instead.
+`pencil()` still lays its free underdrawing. A painting, `Session(medium="paint")`, is
+unchanged, and may still draw in graphite beside its paint.
 
 The drawing is made with `line()`, one stroke at a time, in a channel of its own that
 paint never buries and that is charged like paint. **The channel's unit is the value the
@@ -516,8 +518,11 @@ erased more than twice, and erasures above a tenth of the marks (two of 155).
 
 ```python
 s.look(grid=, values=, region=, reference=, diff=, scale=, sketch=, marks=, impasto=,
-       path=)                                   # the last three are on unless turned off;
-                                                # sketch=False hides the guides as well
+       tooth=, path=)                           # the last three are on unless turned off;
+                                                # sketch=False hides the guides as well;
+                                                # tooth=True washes the bare paper: blue where
+                                                # no graphite has landed, amber where a light
+                                                # 2H would speckle (a drawing's question)
 s.thumbnail(places=None, size=192, path=)       # the arrangement, flat and small:
                                                 # {place: value or colour}, a pair
                                                 # (value, clip) held inside the clip; left

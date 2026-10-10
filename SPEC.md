@@ -2,6 +2,11 @@
 
 Oct 7, 2026 · @Ben
 
+> **Status, 2026-10-10.** The fork is severed from upstream, so "merge back upstream" and
+> "keep the upstream shape" no longer apply, and "nothing refused" is superseded for a
+> graphite session, where paint verbs raise. [`CLAUDE.md`](CLAUDE.md) has the current
+> rules. [`SPEC-REVIEW.md`](SPEC-REVIEW.md) records where the build differs from this text.
+
 ## Purpose and scope
 
 Fork [easel-paint](https://github.com/Gemberkoekje/EaselAPI) (MIT, v0.8.0 at 1 Oct 2026) into a graphite drawing engine for LLM agents, where pencil is the medium rather than a sketch layer under paint. Deliver one test drawing made by an agent from the fork, plus a per-stroke frame capture that plays back as a time-lapse.

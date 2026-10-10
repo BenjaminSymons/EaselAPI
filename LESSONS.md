@@ -1,5 +1,11 @@
 # Lessons learned
 
+> **Superseded in part, 2026-10-10.** This repository is severed from upstream, and
+> drawing is its product. *Add capability beside the old path, never through it* and
+> the golden preservation it protects no longer bind drawing work, and *the engine
+> refuses nothing* no longer holds for a graphite session. [`CLAUDE.md`](CLAUDE.md) says
+> what still binds. The rest of this file holds.
+
 Easel was built to a brief of nine milestones, and measured by six rehearsal runs in
 which fresh sessions painted a picture against nothing but `PAINTER.md` and were then
 read. Those write-ups, an adversarial review register of sixty-six findings, and the

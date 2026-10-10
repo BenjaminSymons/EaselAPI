@@ -1008,3 +1008,15 @@ def test_a_tool_refuses_an_argument_it_does_not_take(call, tmp_path):
     with pytest.raises(Exception, match=r"bogus"):
         call("new", session=str(tmp_path / "x.easel"), bogus=1)
     assert "graphite" in call("guide", document="draftsman").text.lower()
+
+
+def test_a_drawings_plan_refuses_a_paint_entry_where_it_is_written():
+    from easel.mcp_server import _plan
+
+    mass = {"shape": "D5", "brush": "bristle", "color": "dark"}
+    with pytest.raises(ValueError, match="block_in is a paint verb"):
+        _plan([mass], "graphite")
+    _, lines = _plan([mass], "paint")
+    assert lines[0].startswith("s.block_in(")
+    _, lines = _plan([{"points": [[0.1, 0.2], [0.5, 0.4]], "grade": "2H"}], "graphite")
+    assert lines[0].startswith("s.line(")

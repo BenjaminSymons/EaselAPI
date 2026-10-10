@@ -246,17 +246,6 @@ def test_the_draftsman_is_a_document_the_build_ships() -> None:
     assert set(docs.GUIDES) == {"guide", "draftsman"}
 
 
-def test_the_draftsman_stays_inside_its_word_budget() -> None:
-    """Set before the file was written (`easel.docs.DRAFTSMAN_WORDS`), so the first
-    rule in had to be bought like every later one. Over budget, move a measurement to
-    `CALIBRATION.md` or a fact to `REFERENCE.md`; do not raise the number."""
-    words = len(docs.read("draftsman").split())
-    assert words <= docs.DRAFTSMAN_WORDS, (
-        f"DRAFTSMAN.md is {words} words, over its {docs.DRAFTSMAN_WORDS}-word budget by "
-        f"{words - docs.DRAFTSMAN_WORDS}. Move a section out rather than raising this."
-    )
-
-
 def test_the_draftsmans_card_is_held_to_the_cards_budget() -> None:
     card = docs.front_page("draftsman")
     assert card.startswith(docs.FRONT_PAGE)

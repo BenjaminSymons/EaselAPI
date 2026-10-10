@@ -69,8 +69,11 @@ DOCUMENTS = {
 #: The two guides -- the method for each medium -- and what else they are called.
 #: `DRAFTSMAN.md` is the graphite medium's `PAINTER.md`: the same shape, a card
 #: headed :data:`FRONT_PAGE` and the rest, written from the first test drawing's cost
-#: and held to a budget of its own (:data:`DRAFTSMAN_WORDS`). A painter reads one of
-#: the two, never both, so neither restates the other.
+#: and its card is held to :data:`CARD_WORDS`, the same as the painting guide's. It has
+#: no ceiling on the whole file: a ceiling set above the file's size made every
+#: measured rule buy its place by cutting a measured rule, and the card is what a
+#: drawer reads before the first mark, so only that page is held. A painter reads one
+#: of the two, never both, so neither restates the other.
 GUIDES = ("guide", "draftsman")
 
 #: The heading of the section the guide means to be read on its own: the whole
@@ -119,17 +122,6 @@ FRONT_PAGE_WORDS = 6_700
 #: measured as too long. `LESSONS.md`'s growth rule applies here twice over, since
 #: anything added to the card is added to the file as well.
 CARD_WORDS = 1_400
-
-#: The ceiling on `DRAFTSMAN.md`, the graphite medium's guide, asserted by
-#: `tests/test_guide.py` as `PAINTER.md`'s is; its card is held to :data:`CARD_WORDS`.
-#: **Set before the file was written**, which is the order the fork's review asked
-#: for: a rule that enters the guide leaves nothing else, so the ceiling has to be
-#: there on the day the first rule goes in. 5,000 and not `PAINTER.md`'s 6,700,
-#: because one drawing's worth of measured rules is what there is to say, and the
-#: lesson of the painting guide is that a ceiling thousands of words above the text
-#: binds nothing. Lowered to a little over the file's own size on the day the second
-#: drawing is measured against it, if the file comes in well under.
-DRAFTSMAN_WORDS = 5_000
 
 _PACKAGED = Path(__file__).resolve().parent / "docs"
 _CHECKOUT = Path(__file__).resolve().parents[2]

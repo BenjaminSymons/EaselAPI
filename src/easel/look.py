@@ -118,6 +118,49 @@ class _Frame:
         return r.x0 <= x <= r.x1 and r.y0 <= y <= r.y1
 
 
+#: What ``look(tooth=True)`` washes over the paper. Blue is paper no graphite has touched:
+#: the only paper a highlight can be. Amber is where a light lead would speckle, because
+#: the point catches only the tooth's peaks there, rather than laying flat.
+_CLEAN_TINT = (60, 120, 255)
+_SPECKLE_TINT = (255, 150, 40)
+_TOOTH_ALPHA = 0.3
+#: The lead the tint is judged for: a 2H at a light touch, the first stroke a drawer lays
+#: over a clean area and the one that speckles on an open tooth.
+_LIGHT_GRADE = "2H"
+_LIGHT_PRESSURE = 0.3
+
+
+def _wash(arr: np.ndarray, alpha: np.ndarray, tint: tuple[int, int, int]) -> None:
+    """Tint ``arr`` in place, pixel by pixel, by ``alpha`` (``0..1``, canvas-shaped)."""
+    colour = np.asarray(tint, dtype=np.float32)
+    a = alpha[..., None] * _TOOTH_ALPHA
+    arr *= 1.0 - a
+    arr += colour * a
+
+
+def _tooth_tint(canvas: Canvas, arr: np.ndarray) -> np.ndarray:
+    """The view with the two things a drawer decides from washed over it.
+
+    Clean paper is a flat blue. Amber is graded: the less of a light dab the point lays,
+    the deeper it is, so the places where a light stroke breaks up stand out from the
+    places where it merely lays grey. The two can hold at once.
+    """
+    from easel.graphite import get_grade
+
+    grade = get_grade(_LIGHT_GRADE)
+    bite = grade.bite + grade.bite_gain * _LIGHT_PRESSURE
+    out = np.asarray(arr, dtype=np.float32).copy()
+    if canvas.has_graphite:
+        clean = (canvas.graphite <= 0.0).astype(np.float32)
+    else:
+        clean = np.ones((canvas.height, canvas.width), dtype=np.float32)
+    # The speckle is a property of bare paper: a mark already laid is left as it reads,
+    # so a light tone's grey stays legible under the wash.
+    _wash(out, clean, _CLEAN_TINT)
+    _wash(out, (1.0 - canvas.tooth_open(bite)) * clean, _SPECKLE_TINT)
+    return np.clip(out + 0.5, 0, 255).astype(np.uint8)
+
+
 def render_look(
     canvas: Canvas,
     scale: int | None = DEFAULT_LOOK_SIZE,
@@ -131,6 +174,7 @@ def render_look(
     marks: dict | None = None,
     strokes: list | None = None,
     guides: list | None = None,
+    tooth: bool = False,
 ) -> Image.Image:
     """Render a view of the canvas.
 
@@ -150,6 +194,9 @@ def render_look(
         diff_against: an earlier 8-bit RGB array; changed pixels are tinted.
         impasto: shade paint height as low relief.
         sketch: show the pencil underdrawing the paint has not covered.
+        tooth: wash the paper no graphite has touched blue, and the places a light 2H
+            lead would speckle amber, so a drawer can see whether a highlight is still
+            clean paper and whether a light stroke will break up on the tooth.
         marks: named landmarks to draw on both panels, ``{name: (x, y)}``.
         guides: overlay drawing to put over both panels -- a list of
             ``{"points": [...], "note": str}``. Graphite that lives on the view
@@ -168,6 +215,8 @@ def render_look(
     if values:
         arr = np.repeat(arr[:, :, None], 3, axis=2)
 
+    if tooth:
+        arr = _tooth_tint(canvas, arr)
     if diff_against is not None:
         arr = _apply_diff(arr, diff_against)
 

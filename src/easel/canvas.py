@@ -798,6 +798,33 @@ class Canvas:
         self.has_sketch = bool(self.sketch.any())
 
     # -- the graphite medium ---------------------------------------------------------
+    def _lead_gate(self, tooth: np.ndarray, bite: float) -> np.ndarray:
+        """Where a lead that reaches ``bite`` into the tooth lays, over a field of tooth.
+
+        ``0`` where the field is below what the point reaches (it catches nothing: the
+        speckle's blank), ``1`` where it lays, and a smooth step between. The deposit
+        and :meth:`tooth_open` both read the tooth through this, so the look and the
+        stroke cannot disagree.
+        """
+        need = min((1.0 - float(np.clip(bite, 0.0, 1.0))) * _LEAD_REACH, self.tooth_ceiling)
+        gate = np.clip((tooth - need) / _GRAPHITE_BAND, 0.0, 1.0)
+        return gate * gate * (3.0 - 2.0 * gate)
+
+    def tooth_open(self, bite: float) -> np.ndarray:
+        """Where a lead of ``bite`` lays on this paper, over the whole canvas.
+
+        ``1`` where the point reaches the valleys of the tooth and a stroke lays flat,
+        ``0`` where it catches only the peaks and speckles. Graphite already on the
+        paper fills the valleys (:data:`_FILLED_TOOTH`), so a worked area reads ``1``
+        whatever the tooth beneath it. The same field :meth:`bite_graphite` gates with,
+        for the look's ``tooth=True``.
+        """
+        tooth = (self.height_map * _TOOTH_HEIGHT_W
+                 + self.grain * _TOOTH_GRAIN_W)
+        if self.has_graphite:
+            tooth = tooth + self.graphite * _FILLED_TOOTH
+        return self._lead_gate(tooth, bite)
+
     def bite_graphite(self, cx: float, cy: float, mask: np.ndarray, strength: float,
                       bite: float, field: np.ndarray, origin: tuple[int, int]) -> None:
         """One dab of a graphite stroke, into the stroke's own field as a maximum.
@@ -840,9 +867,7 @@ class Canvas:
                  + self.grain[cy0:cy1, cx0:cx1] * _TOOTH_GRAIN_W)
         if self.has_graphite:
             tooth = tooth + self.graphite[cy0:cy1, cx0:cx1] * _FILLED_TOOTH
-        need = min((1.0 - float(np.clip(bite, 0.0, 1.0))) * _LEAD_REACH, self.tooth_ceiling)
-        gate = np.clip((tooth - need) / _GRAPHITE_BAND, 0.0, 1.0)
-        gate = gate * gate * (3.0 - 2.0 * gate)
+        gate = self._lead_gate(tooth, bite)
 
         fx0, fy0 = cx0 - origin[0], cy0 - origin[1]
         window = field[fy0:fy0 + (cy1 - cy0), fx0:fx0 + (cx1 - cx0)]

@@ -221,7 +221,8 @@ def frames(session, every: int = 1, scale: int | None = 720, stroke_motion: bool
                           region=crop,
                           sketch=bool(args.get("sketch", True)),
                           marks=fresh.marks if args.get("marks", True) else None,
-                          guides=fresh.guides)
+                          guides=fresh.guides,
+                          tooth=bool(args.get("tooth", False)))
         img = _letterbox(img, size) if img.size != size else img
         yield Frame(finish(img, label), at, kind, None, label, hold)
 

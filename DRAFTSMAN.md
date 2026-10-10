@@ -292,7 +292,9 @@ with a clean edge; `kneaded` takes a share with a soft one; both are charged, an
 act on everything under the place. **Every stump or edge stroke beside the light takes
 two to five percent of its paper**: cut a stump's path round the light by half its
 width, as a row is, and count the treatments before laying them; the `lightest:` line
-says what each took.
+says what each took. Before you commit to a highlight, `s.look(tooth=True)` shows the
+bare paper: blue where no graphite has landed, and amber where a light `2H` would break
+up on the tooth rather than lay flat.
 
 ---
 

@@ -11,6 +11,7 @@ jittered dab in every stroke is drawn from this one stream in the same order.
 
 from __future__ import annotations
 
+import functools
 import inspect
 import json
 import math
@@ -106,6 +107,32 @@ _READABLE_FORMATS = (1, 2, 3, 4)
 #: it; a file saved before the word existed is a painting. See :class:`Session`.
 MEDIA = ("paint", "graphite")
 
+
+def _paint_verb(method):
+    """Refuse this paint verb on a graphite session, and say what draws instead.
+
+    The refusal is the whole of what the decorator adds: the signature and the docstring
+    are the method's own, and a painting session takes the method as it always did. A
+    replay lays its records through the same verbs, so :meth:`Session._replay_records`
+    sets ``_replaying`` while it does, and a drawing whose log holds a paint record
+    still rebuilds.
+    """
+
+    @functools.wraps(method)
+    def verb(self, *args, **kwargs):
+        drawing = getattr(self, "medium", "paint") == "graphite"
+        if drawing and not getattr(self, "_replaying", False):
+            raise ValueError(
+                f"{method.__name__}() is a paint verb, and this is a graphite drawing "
+                "(Session(medium='graphite')). A drawing is laid with line(), the helpers "
+                "built on it (hatch, crosshatch, contour, scribble, tone, stump, kneaded, "
+                "plastic) and pencil() for a free underdrawing. A painting is "
+                "Session(medium='paint')."
+            )
+        return method(self, *args, **kwargs)
+
+    return verb
+
 #: The width of a smudge, as a fraction of the canvas long side, when the painter
 #: does not name one. The knee of the measured curve in :meth:`Session.smudge`: the
 #: softening a single pass buys has arrived by here and stops improving, while the
@@ -198,14 +225,13 @@ class Session:
             out -- the budget is a plan, not a lock -- but :meth:`cost` says when a
             call would eat a large share of what is left, and ``easel run`` prints
             spent and remaining after every pass.
-        medium: ``"paint"`` or ``"graphite"``. A declaration, like the budget: what
-            this picture is made of. ``"graphite"`` picks the drawing paper when no
-            texture is named, makes :meth:`look` a values view unless asked
-            otherwise, and is saved with the file. It refuses nothing -- a drawing
-            may still ``pencil()`` its free envelope, and the paint verbs still
-            work -- because the engine refuses nothing (``REFERENCE.md``: *the budget
-            is a plan, not a lock*). The marks of the medium are :meth:`line` and the
-            helpers built on it.
+        medium: ``"paint"`` or ``"graphite"``, chosen when the session is made and saved
+            with the file. ``"graphite"`` is a drawing: it picks the drawing paper when no
+            texture is named, makes :meth:`look` a values view unless asked otherwise,
+            and refuses the paint verbs (:meth:`stroke`, :meth:`block_in`,
+            :meth:`glaze` and the rest), which raise. A drawing is laid with
+            :meth:`line` and the helpers built on it, and may still ``pencil()`` its
+            free underdrawing. ``"paint"`` is unchanged.
         capture: keep what the painter saw and ran beside the log, for the film:
             each :meth:`look` and :meth:`rehearse` with the log index it was taken
             at, and each pass ``easel run`` or the server runs with its scripts'
@@ -242,6 +268,9 @@ class Session:
             )
         #: What the picture is made of, ``"paint"`` or ``"graphite"``. See the class.
         self.medium = str(medium)
+        #: True while :meth:`_replay_records` lays a log: the paint verbs' refusal is
+        #: lifted for the length of a replay and nothing else.
+        self._replaying = False
         #: Whether the painter's own looks, rehearsals and passes are kept beside the
         #: log for the film (:mod:`easel.film`). See :meth:`captures`.
         self.capture = bool(capture)
@@ -433,6 +462,7 @@ class Session:
         return f"{self.spent} of {self.budget} strokes spent, {left} left"
 
     # -- painting ---------------------------------------------------------------
+    @_paint_verb
     def stroke(
         self,
         points,
@@ -619,6 +649,7 @@ class Session:
                              stacklevel=4 if self._film_call else 3)
         return record
 
+    @_paint_verb
     def dab(self, x: float, y: float, brush="round_hard", color="burnt_umber",
             press: int = 1, **kw):
         """A single mark at one point. Convenience for accents and highlights.
@@ -647,6 +678,7 @@ class Session:
         """
         return self.stroke([(x, y)], brush=brush, color=color, press=press, **kw)
 
+    @_paint_verb
     def smudge(self, edge, size: float = SMUDGE_SIZE, pressure="even", **kw):
         """Drag what is already on the canvas, rather than adding paint.
 
@@ -717,6 +749,7 @@ class Session:
         return self.stroke(path, brush="smudge", color="titanium_white",
                            pressure=pressure, size=size, **kw)
 
+    @_paint_verb
     def glaze(self, points, color, brush="round_soft", opacity: float | None = None,
               to_value: float | None = None, **kw):
         """A thin transparent film over dry paint. Does not build height.
@@ -882,6 +915,7 @@ class Session:
             )
         return best
 
+    @_paint_verb
     def block_in(
         self,
         region,
@@ -1396,6 +1430,7 @@ class Session:
                 f"Use 'horizontal', 'vertical', 'diagonal' or 'cross'."
             )
 
+    @_paint_verb
     def sweep(
         self,
         edge,
@@ -1635,6 +1670,7 @@ class Session:
         return np.interp(at, [0.0, length * 0.5, length], wob)
 
     # -- drawing ----------------------------------------------------------------
+    @_paint_verb
     def cover(
         self,
         place,
@@ -1762,6 +1798,7 @@ class Session:
                 note=note or f"cover {target.name or 'area'}",
             )
 
+    @_paint_verb
     def scumble(
         self,
         band,
@@ -3066,6 +3103,7 @@ class Session:
         return ellipse(place, r, rotate=rotate, steps=steps, name=name,
                        aspect=self.aspect)
 
+    @_paint_verb
     def dry(self, amount: float = 1.0, region=None) -> StrokeRecord:
         """Dry the canvas so the next paint covers instead of mixing.
 
@@ -3188,6 +3226,7 @@ class Session:
         impasto: bool = True,
         sketch: bool = True,
         marks: bool = True,
+        tooth: bool = False,
     ) -> Path:
         """Look at the canvas. Returns the path to a PNG.
 
@@ -3211,10 +3250,16 @@ class Session:
             marks: draw the landmarks, on both panels. ``False`` hides them and their
                 labels, which sit over the details they name. ``easel look
                 --no-marks --no-sketch`` is the same clean view from a shell.
+            tooth: a drawing's question, asked of the paper: wash the places no graphite
+                has touched blue, and the places a light 2H lead would speckle amber. A
+                highlight is clean paper only where it is blue; a light stroke will break
+                up where it is amber. Graphite already on the paper fills the tooth, so a
+                worked area is not amber.
 
         Example::
 
             s.look(region=cell("D4"), reference=ref, grid="fine")
+            s.look(tooth=True)   # is the highlight still clean, and where will a 2H speckle
         """
         ref_img = None if reference is None else load_reference(reference)
         values = self._values_view_wanted(values)
@@ -3232,11 +3277,13 @@ class Session:
             sketch=sketch,
             marks=self.marks if marks else None,
             guides=self.guides,
+            tooth=tooth,
         )
         self._last_look = current
         written = save_look(img, self._look_path(path))
         self._capture("rehearse" if self._is_trial else "look", written,
-                      grid=grid, values=values, region=region, sketch=sketch, marks=marks)
+                      grid=grid, values=values, region=region, sketch=sketch, marks=marks,
+                      tooth=tooth)
         return written
 
     def _capture(self, kind: str, path: Path, **args) -> None:
@@ -6723,7 +6770,20 @@ class Session:
                             captions=captions)
 
     def _replay_records(self, records) -> None:
-        """Lay a log's records on this session, one call each, carrying their own account."""
+        """Lay a log's records on this session, one call each, carrying their own account.
+
+        A drawing's log can hold a paint record from before the graphite medium refused
+        paint, so the replay lays through the paint verbs with the refusal lifted.
+        """
+        previous = getattr(self, "_replaying", False)
+        self._replaying = True
+        try:
+            self._lay_records(records)
+        finally:
+            self._replaying = previous
+
+    def _lay_records(self, records) -> None:
+        """The body of :meth:`_replay_records`: one record, one call."""
         fresh = self
         for record in records:
             if record.kind == "dry":

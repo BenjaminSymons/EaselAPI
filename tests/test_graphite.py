@@ -2,8 +2,8 @@
 
 Assertions are on the canvas, not on return values (``LESSONS.md``, trap 3): the plane
 is diffed either side of every mark. And on what a graphite mark must *not* touch --
-the paint channels and the sketch -- because the medium was added beside the paint,
-never through it, and that is the contract every stored golden depends on.
+the paint channels and the sketch. A drawing has no paint: its paint verbs raise, and
+a painting session is the one that may mix the two channels.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import json
 
 import numpy as np
 import pytest
+from PIL import Image
 
 from easel import GRADES, Session
 from easel.canvas import Canvas
@@ -190,7 +191,7 @@ def test_unknown_grade_and_tip_name_the_choices(tmp_path):
         s.line(LINE, "HB", tip="flat")
     assert get_grade("hb").name == "HB" and GRAPHITE_TIPS == ("point", "side")
     with pytest.raises(TypeError, match="grade= is a pencil"):
-        s.stroke(LINE, "bristle", "burnt_umber", grade="HB")
+        make(tmp_path, medium="paint").stroke(LINE, "bristle", "burnt_umber", grade="HB")
 
 
 def test_nothing_is_laid_off_the_canvas():
@@ -205,7 +206,7 @@ def test_nothing_is_laid_off_the_canvas():
 # Undo, replay, the file, the rehearsal
 # --------------------------------------------------------------------------------------
 def test_undo_restores_the_plane_exactly_and_only_the_plane(tmp_path):
-    s = make(tmp_path)
+    s = make(tmp_path, medium="paint")
     s.line(LINE, "HB")
     s.stroke([(0.1, 0.8), (0.9, 0.8)], "bristle", "burnt_umber")
     kept_g, kept_rgb = s.canvas.graphite.copy(), s.canvas.rgb.copy()
@@ -244,7 +245,6 @@ def test_a_drawing_replays_exactly(tmp_path):
     s.pencil([(0.1, 0.9), (0.9, 0.85)])
     s.line(LINE, "2H", pressure=0.3)
     s.line(Region(0.2, 0.2, 0.8, 0.6), "4B", pressure="taper", tip="side")
-    s.stroke([(0.1, 0.8), (0.9, 0.8)], "bristle", "burnt_umber")
     s.line([(0.3, 0.3), (0.7, 0.35)], "6B", pressure=[0.2, 1.0, 0.4], width=0.01)
     again = s.replay()
     assert np.array_equal(again.canvas.graphite, s.canvas.graphite)
@@ -252,6 +252,22 @@ def test_a_drawing_replays_exactly(tmp_path):
     assert np.array_equal(again.canvas.sketch, s.canvas.sketch)
     assert again.medium == "graphite"
     assert [r.kind for r in again.history.records] == [r.kind for r in s.history.records]
+
+
+def test_a_painting_reopened_as_a_drawing_still_replays_its_paint(tmp_path):
+    """A log written before the refusal can hold paint records in a graphite session.
+    Replay lays them with the refusal lifted, so such a file still rebuilds; the
+    drawing's own verbs stay refused for anything new."""
+    p = make(tmp_path, medium="paint")
+    p.stroke([(0.1, 0.5), (0.9, 0.5)], "bristle", "burnt_umber")
+    p.line(LINE, "2H", pressure=0.3)
+    p.medium = "graphite"
+    with pytest.raises(ValueError, match="paint verb"):
+        p.stroke([(0.1, 0.8), (0.9, 0.8)], "bristle", "burnt_umber")
+    again = p.replay()
+    assert np.array_equal(again.canvas.rgb, p.canvas.rgb)
+    assert np.array_equal(again.canvas.graphite, p.canvas.graphite)
+    assert [r.kind for r in again.history.records] == [r.kind for r in p.history.records]
 
 
 def test_a_drawing_survives_the_file(tmp_path):
@@ -355,9 +371,9 @@ def test_a_pressure_that_is_not_a_number_is_refused_in_the_painters_words(tmp_pa
 def test_undo_interleaves_paint_and_graphite_and_puts_each_channel_back_in_turn(tmp_path):
     """A paint stroke over a graphite line and a line over the paint: the two
     channels are snapshot apart, so each undo restores exactly the channel its mark
-    touched and leaves the other alone. The test the stored goldens lean on, since
-    the medium was added beside the paint and never through it."""
-    s = make(tmp_path)
+    touched and leaves the other alone. A painting may draw in graphite as well, so
+    this is a painting session: a drawing refuses the paint verbs."""
+    s = make(tmp_path, medium="paint")
     s.stroke([(0.1, 0.5), (0.9, 0.5)], "bristle", "burnt_umber")
     rgb_a, g_a = s.canvas.rgb.copy(), s.canvas.graphite.copy()
     assert not g_a.any(), "a paint stroke laid graphite"
@@ -386,3 +402,54 @@ def test_undo_interleaves_paint_and_graphite_and_puts_each_channel_back_in_turn(
     s.history.invalidate_snapshots()
     assert s.undo(1) == 1
     assert np.array_equal(s.canvas.rgb, rgb_b) and np.array_equal(s.canvas.graphite, g_b)
+
+
+# --------------------------------------------------------------------------------------
+# A drawing has no paint, and the tooth view reads the paper
+# --------------------------------------------------------------------------------------
+@pytest.mark.parametrize("verb", ["stroke", "dab", "smudge", "glaze", "block_in",
+                                  "sweep", "cover", "scumble", "dry"])
+def test_a_drawing_refuses_every_paint_verb_and_logs_nothing(tmp_path, verb):
+    s = make(tmp_path)
+    with pytest.raises(ValueError, match=rf"^{verb}\(\) is a paint verb.*line\(\)"):
+        getattr(s, verb)(LINE)
+    assert s.history.records == [] and s.stroke_count == 0
+    assert not s.canvas.has_graphite and not s.canvas.has_sketch
+
+
+def test_a_painting_still_paints_and_may_draw_in_graphite_beside_it(tmp_path):
+    p = make(tmp_path, medium="paint")
+    p.dab(0.5, 0.5, "round_hard", "burnt_umber")
+    p.line(LINE, "HB")
+    assert [r.kind for r in p.history.records] == ["stroke", "graphite"]
+    assert p.canvas.has_graphite
+
+
+def test_the_tooth_view_washes_bare_paper_and_leaves_the_marks_as_they_are(tmp_path):
+    s = make(tmp_path)
+    s.line([(0.15, 0.30), (0.85, 0.30)], "6B", pressure=0.9)
+    plain = np.asarray(Image.open(s.look(path=tmp_path / "plain.png", scale=None,
+                                         values=True)).convert("RGB")).astype(int)
+    tooth = np.asarray(Image.open(s.look(path=tmp_path / "tooth.png", scale=None,
+                                         values=True, tooth=True)).convert("RGB")).astype(int)
+    assert plain.shape == tooth.shape == (s.canvas.height, s.canvas.width, 3)
+    marks = s.canvas.graphite > 0
+    assert np.abs(tooth[marks] - plain[marks]).max() <= 1, "the wash went over a mark"
+    assert (tooth[~marks] != plain[~marks]).any(), "the wash did not reach the bare paper"
+
+
+def test_the_tooth_reads_further_into_the_paper_as_the_lead_reaches(tmp_path):
+    c = make(tmp_path).canvas
+    lays = [float(c.tooth_open(bite).mean()) for bite in (0.0, 0.5, 1.0)]
+    assert lays[0] < lays[1] < lays[2]
+    # A point that reaches every valley lays on all of the paper.
+    assert float(c.tooth_open(1.0).min()) == 1.0
+
+
+def test_a_captured_tooth_look_keeps_its_flag_for_the_film(tmp_path):
+    s = make(tmp_path, capture=True)
+    s.line(LINE, "HB")
+    s.look()
+    s.look(tooth=True)
+    assert "tooth" not in s.captures[0]["args"]
+    assert s.captures[1]["args"]["tooth"] is True
