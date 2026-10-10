@@ -75,9 +75,9 @@ s.hatch(ellipse((0.5, 0.55), 0.2, 0.14), grade="2B", tip="side", pressure=0.8)
    and one stump each. `line(row, "2H", pressure=0.7, tip="side", width=0.07)` in rows
    at two angles twenty degrees apart; sixteen strokes for a far plane, fifty for a near
    one, `stump(place, 1.0)` once over each. Not `tone()`: that is ten lines a cell.
-3. **Lay each curved passage along its own shape**: arcs of its outline scaled or
-   offset, cut into runs a sixth of a stroke short of whatever stands in it, the
-   pressure varying along the arc. Side strokes hatched *across* a curved shape end on its outline in steps, and a
+3. **Lay each curved passage along its own shape**: arcs of its outline offset inward
+   a stroke's width, not scaled, cut into runs a sixth of a stroke short of whatever
+   stands in it, the pressure varying along the arc. Side strokes hatched *across* a curved shape end on its outline in steps, and a
    row of steps is a staircase.
 4. **Check the values before anything else.** Write the plan down where the check can
    see it, read the places back after every pass, and **read medians, not means**: the
@@ -92,9 +92,9 @@ s.hatch(ellipse((0.5, 0.55), 0.2, 0.14), grade="2B", tip="side", pressure=0.8)
    three to fifteen hundredths, more the more holes it has to spread. The darkest mass
    is a `4B` or `6B` leant on, laid after every stump near it; the closing check says
    how far the darks reached.
-8. **Highlights are paper never touched.** Plan them as places no line crosses, and
-   build the drawing round them. An eraser is a repair with a residue, for a passage
-   that went wrong, not the way a light is made.
+8. **Highlights are paper never touched.** Plan them as places no line crosses, on a
+   floor toned to about `0.83`, and build the drawing round them. An eraser is a repair
+   with a residue, for a passage that went wrong, not the way a light is made.
 
 ```python
 far = polygon([(0.0, 0.0), (1.0, 0.0), (1.0, 0.33), (0.0, 0.35)], name="far")
@@ -113,7 +113,8 @@ s.kneaded(cell("B2"), strength=0.5)      # lifts half; the ghost stays
 say so: `s.plan(values={far: 0.70, ...}, lightest=mass, subject_share=0.45,
 why=...)`. The plan's places are read by their medians after every pass, the light's
 line says how much of it is still paper never touched, and `s.checklist()` quotes your
-`why` back at the end. **Count the rows in the envelope** while it is still free: a
+`why` back at the end. `subject:` counts only the marks you laid with `note="subject"`,
+so note each mark the subject is made of. **Count the rows in the envelope** while it is still free: a
 drawing's planes are laid in rows, and the check says so after a pass of them; two
 angles, and a passage crossing them along its own form, is the answer, and
 `s.plan(bands="subject")` is for a subject that runs that way.
@@ -207,15 +208,19 @@ in the thing's own pass, along its silhouette, as one layer where the rows are t
 and an edge stroke each laid across that crown cost two lifts to take back.
 
 **One stump at full strength closes the rows**; a second evens the mottle a single
-stump leaves over a large place. A stump over a plane moves its mean by two hundredths
+stump leaves over a large place. **A second stump covers exactly what the first did,
+polygons and all**: stumping only the rectangles the second time drew a faint rectangle
+round the form. A stump over a plane moves its mean by two hundredths
 and its median by about six, so read the plane after the stump, not before.
 
 ### 3. Lay each curved passage along its own shape
 
 A side stroke that ends on a curved outline ends there at a different place on every
-row, and the ends read as steps. **Build the passage as arcs of its own shape**, the outline scaled toward the centre or grown away
-from it, each arc a `line()` with a pressure list that is heavier where the form turns
-from the light, cut into runs round whatever stands in it. For a hollow thing, the arcs
+row, and the ends read as steps. **Build the passage as arcs of its own shape**, each arc a `line()` with a pressure list that is heavier where the form turns
+from the light, cut into runs round whatever stands in it. The arcs step inward by a
+stroke's width in both axes, offset from the outline, not scaled: on a round form the two
+nearly match, but on a flat one a scaled ring overlaps four deep along its long ends and
+gaps along its sides. For a hollow thing, the arcs
 run round the inside; for a form, the arcs are cross-contours, and each is shorter than
 the one before so that their ends trace the terminator; exercise 5 lays one.
 
@@ -230,7 +235,7 @@ notch of paper where they meet.
 from easel import Session, span
 
 s = Session(1024, 768, medium="graphite", seed=4)
-far, near = "A1:H3", "A4:H8"               # strings; span() has no name
+far, near = "A1:H3", "A4:H8"               # strings: a place named by its cells
 s.plan(why="the light is the paper, and everything else is drawn to make it read as light",
        values={far: 0.70, near: 0.52}, lightest=far, subject_share=0.45)
 s.hatch(span("A4", "H8"), angle=0, grade="HB", pressure=0.9, tip="side", width=0.07)
@@ -244,7 +249,8 @@ and not the shade; the first drawing read means through `sample()` all session a
 `0.63` where the check read `0.49`. Two places planned within `0.10` that touch are
 named at registration: that pair is a lost edge, meant or not. **The `plan:` line
 carries every place's reading**, and `s.compare(s.plan())` draws the heat map. Name
-every place; one handed over bare prints as `place 1`.
+every place: `span()` names one by its two cells, `Region(..., name=)` and
+`polygon(..., name=)` take your own, and a place handed over bare prints as `place 1`.
 
 **The stump moves the number**, by what the holes let it spread: the median moves
 `0.03` lighter under a stump at full strength on rows leant on, `0.06` on rows laid at
@@ -269,7 +275,9 @@ pixels wide at `pressure=0.9`, along the line, with its centre a pixel or two in
 outline, because the tooth leaves a line of paper speckle along a stroke whose centre
 sits on it. **It is laid in the mass's own value**, the grade and pressure that read as
 the mass, narrow: a `2H` at full pressure reads `0.58`, and round a plane at `0.67` that
-is a dark ring, not an edge. **A lost edge is two tones of one value butting on the line and one stump
+is a dark ring, not an edge. **Where the band beside the edge is speckled, the hard edge is three strokes**: a 20 px
+stroke 8 px out, a stump along it, and the 13 px edge last; the edge alone leaves the
+band's 10 to 15 px fringe of paper. **A lost edge is two tones of one value butting on the line and one stump
 dragged across the join**, and nothing else: two values under `0.10` apart are already
 one mass where they meet. A soft edge is a stump dragged along the line once.
 
@@ -279,12 +287,21 @@ The acceptance criterion for a finished drawing is a darkest value `0.80` of the
 the paper to black, which is a `2B` at full pressure twice, a `4B` once, or a `6B` at
 half pressure. **`darks:` reads an area**, the darkest half-percent of the sheet, about
 four thousand pixels on this one, so the dark is a place laid once at the grade that
-reaches the value, and a dark laid over a dark adds none of it. **A dark laid with a
+reaches the value, and a dark laid over a dark adds none of it. **The area is a sum**: three `6B` arcs read `0.73` and six marks read
+`0.82`, so lay marks until the area is there, not one longer mark to stand for them.
+**A dark laid with a
 list that falls to its ends wants the softer grade**: seven `4B` arcs at bells to half
-read `0.78` of the way, two `6B` at a bell to `0.9` read `0.85`. Lay
+read `0.78` of the way, two `6B` at a bell to `0.9` read `0.85`. **A `6B`'s list must fall
+under `0.15` at its ends**: at `0.4` the ends read as blocks, and at `0.15` they fade (the
+table's `6B` at `0.25` reads `0.31`). Lay
 the darks after every stump near them, and leave them.
 
 ### 8. Highlights are paper never touched
+
+**A highlight is an edge only against a toned floor.** Paper laid against paper has no
+edge: the crown of a round form read in no look until the floor round it was toned from `0.96`
+to `0.83`, held off with a `2H` and stumped twice to `0.82` to `0.85`. Tone the floor round
+a light before you plan the light.
 
 A highlight lifted is a value: an eraser leaves a ghost, and a `6B` passage lifted hard
 reads `0.74` where the paper reads `0.96`. `plastic` takes most of a passage in one pass

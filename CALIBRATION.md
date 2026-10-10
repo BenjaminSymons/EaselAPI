@@ -466,6 +466,36 @@ And one the fourth drawing asked for:
   need one for this), so *close in value to what it sits on* and *HB at 0.6* cannot
   both hold on a toned corner. The guide's example is now the leant-on stroke.
 
+And what the fifth drawing asked for, folded into `DRAFTSMAN.md` (run 5's `NOTES.md`,
+*What this run says of the guide*). Each is a hypothesis until a sixth drawing is made
+against it; the label says which were measured and which were only seen.
+
+- **A highlight's floor.** Measured: the egg's crown read in no look until the floor round
+  it was toned from `0.96` to `0.83`, held off with a `2H` and stumped twice to `0.82` to
+  `0.85`.
+- **The darks are a sum.** Measured by the closing check: about 2400 px of `6B` read
+  `0.73` where the half-percentile wants about 3900; six marks read `0.82`.
+- **A `6B`'s list falls under `0.15`.** Seen in rehearsal: at `0.4` the ends read as
+  blocks, at `0.15` they fade, and at `0.05` a small dark patch remains. The first column
+  of the table above has `6B` at `0.25` reading `0.31`.
+- **Offset, not scaled, on a flat shape.** Seen: scaled rings of a 250 by 68 px floor
+  overlapped four deep along their long ends and gapped at the sides.
+- **A second stump covers what the first did.** Seen: stumping only the rectangles the
+  second time drew a faint rectangle round the form.
+- **The hard edge beside a speckled band is three strokes.** Seen: the edge alone left
+  the band's 10 to 15 px fringe of paper; a 20 px stroke 8 px out, a stump along it, and
+  the 13 px edge last cleared it.
+- **`span()` names its place.** Run 5 read `span()` as unnamed. Checked on the current
+  build: `span("A4", "H8").name` is `A4:H8`, and the naming is in the code at run 5's
+  commit (`060c563`). `Region(..., name=)` and `polygon(..., name=)` take a name. The
+  guide's example said otherwise, and is corrected.
+- **What `subject:` counts.** The marks laid with `note="subject"`, against the declared
+  `subject_share`. Run 5 noted only its arcs and darks, so the line read `9%` against `45%`:
+  it measures the noting, and the guide now says so.
+- **The half-width.** Already in the guide since run 5's round: a run ending at a thing
+  stops a sixth of the width short of it, and a run passing beside keeps half the width
+  clear.
+
 What else the log measured, quoted in `DRAFTSMAN.md`:
 
 - **What a plane costs.** `tone(cell, 0.36, "2B")` lays 10 lines; `hatch(cell,

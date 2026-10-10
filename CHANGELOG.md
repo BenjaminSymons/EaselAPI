@@ -37,6 +37,12 @@ what was done about them in [`SUGGESTIONS.md`](SUGGESTIONS.md), and the method i
 
 ## [Unreleased]
 
+**Run 5's candidates, folded into `DRAFTSMAN.md`.** The highlight's floor, the darks as a
+sum, a `6B`'s list under `0.15`, offset rather than scaled arcs on a flat shape, the second
+stump, the three-stroke hard edge beside a speckled band, what `subject:` counts, and the
+place names. The `span()` line was wrong and is corrected: `span()` names its place by its
+two cells. The measurements are in `CALIBRATION.md`.
+
 **Severed from upstream, and drawing made the product.** This repository no longer tracks
 `upstream` (easel-paint). [`CLAUDE.md`](CLAUDE.md) says what still binds and what does not.
 
