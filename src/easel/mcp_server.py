@@ -1579,7 +1579,33 @@ def build_server() -> MCPServer:
                          Path(output) if output else s._next_free_path("thumbnail"))
         return [drawn.line(path), Image(path=str(path))]
 
+    _refuse_unknown_arguments(server)
     return server
+
+
+def _refuse_unknown_arguments(server: MCPServer) -> None:
+    """Make every tool refuse an argument it does not take.
+
+    The SDK's argument model drops an unknown key on the floor, so ``guide(draftsman=
+    true)`` -- the shell's flag, mirrored by a client that read ``easel guide --help``
+    -- returned ``PAINTER.md`` without a word, and ``look(bogus=1)`` looked. The one
+    channel a client has is the reply, so the reply says it: the model is set to
+    forbid extras and rebuilt. Through the SDK's registry, which ``mcp>=2,<3`` pins;
+    should it move, the tools keep working as they did, since this is a courtesy and
+    not what makes a call land.
+    """
+    try:
+        tools = server._tool_manager.list_tools()
+        for tool in tools:
+            model = tool.fn_metadata.arg_model
+            model.model_config["extra"] = "forbid"
+            model.model_rebuild(force=True)
+            # And the schema a client reads, which was drawn from the model before
+            # the rebuild: so a client that checks can know before it asks.
+            if isinstance(tool.parameters, dict):
+                tool.parameters["additionalProperties"] = False
+    except Exception:  # pragma: no cover - only an SDK that moved its registry
+        pass
 
 
 def main(argv: list[str] | None = None) -> int:

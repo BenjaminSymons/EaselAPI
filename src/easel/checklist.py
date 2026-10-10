@@ -450,7 +450,7 @@ def boxes_line(boxed: int, masses: int) -> str:
             f"({boxed / masses:.0%}) -- check the background hardest")
 
 
-def unspent_line(spent: int, budget: int | None) -> str:
+def unspent_line(spent: int, budget: int | None, reserve: bool = False) -> str:
     """What is left of the budget, and the one instruction that goes with it.
 
     Finding 15, and the sharpest number the 0.5.0 cohort produced: five of its six
@@ -464,14 +464,26 @@ def unspent_line(spent: int, budget: int | None) -> str:
     have most recently been enjoying. Naming it is the painter's, which is why this
     asks for it rather than printing it.
 
+    **A drawing is not asked.** Three test drawings of one subject stopped at 140, 113
+    and 143 of 400 with every planned place met, and each time the instruction asked
+    for marks the method had no use for: `DRAFTSMAN.md` holds the rest as a reserve
+    for the passage the draftsman would apologise for, and nowhere else, and a mark
+    this medium lays cannot be painted over. With ``reserve`` the line is the number.
+
     Args:
         spent: marks charged against the budget so far.
         budget: the budget, or ``None`` for a painting that set none.
+        reserve: the rest is held, not owed -- a drawing's rule -- so the number is
+            printed without the instruction.
     """
     if budget is None:
         return f"unspent: no budget set; {spent} marks laid"
+    if int(spent) > int(budget):
+        # Over, and said so: `0 of 60 unspent` read as a budget met, under a header
+        # that said 84 of 60.
+        return f"unspent: {int(spent) - int(budget)} over the budget of {budget}"
     left = max(0, int(budget) - int(spent))
     line = f"unspent: {left} of {budget} unspent ({left / budget:.0%})"
-    if left / budget >= UNSPENT_SHARE:
+    if left / budget >= UNSPENT_SHARE and not reserve:
         line += " -- name the weakest passage and spend them there"
     return line

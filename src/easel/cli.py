@@ -114,7 +114,7 @@ def _example_codes() -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="easel",
-        description="A headless painting engine. Paint, look, repeat.",
+        description="A headless painting and drawing engine. Paint, look, repeat.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -336,7 +336,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="the closing checklist, answered: every measured line with its number",
         description="What to run when the painting looks finished. Every line of "
                     "PAINTER.md's closing checklist that has a number behind it, "
-                    "answered -- the values, the edges, the ground, the boxes, the "
+                    "answered -- the values, the edges, the ground or, in a drawing, "
+                    "the paper, the darks and the looks, the boxes in a painting, the "
                     "subject's share, what is left of the budget -- and then the "
                     "three questions nothing can measure, with the plan's own `why` "
                     "quoted back. `easel log --check` is the same measurements after "
@@ -606,7 +607,8 @@ def _dispatch(args) -> int:
         scale = None if px == 0 else px
         path = session.look(
             grid="fine" if args.fine else args.grid,
-            values=args.values,
+            # Left off, the medium's own view: a drawing's look is its values.
+            values=True if args.values else None,
             region=args.region,
             reference=args.reference,
             diff=args.diff,

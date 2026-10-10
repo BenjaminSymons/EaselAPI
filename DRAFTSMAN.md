@@ -501,8 +501,8 @@ print(s.checklist())          # or `easel check drawing.easel` from a shell
 `plan:` and `lightest:` against what you declared, with how much of the light is paper
 never touched; `values:` against the box of pencils on this paper; `edges:`; `paper:`,
 the share of the sheet no line has crossed; `pencil:`, how much of the envelope still
-shows; `boxes:`; `darks:`, how far the darks reached; `unspent:`; and a run of over
-fifteen marks laid with no look between them, when there was one. What each measures is
+shows; `darks:`, how far the darks reached; `looks:`, the longest run laid with no
+look between them, and a finding when it passed fifteen; `unspent:`. What each measures is
 one table under *The graphite medium* in [`REFERENCE.md`](REFERENCE.md#the-graphite-medium).
 
 **Then the three it cannot ask**, printed as questions with your own `why` quoted back,
@@ -512,9 +512,9 @@ it; which passage you would apologise for, because the marks left are for that o
 and whether the reason you chose the subject is still there when the drawing is looked
 at small, `s.look(scale=256)`, rather than in a crop.
 
-**The budget unspent is not a finding by itself.** Two drawings of one subject stopped
-at 154 and 138 of 400, and the `unspent:` line asked each for marks the method had no
-use for. The rest goes to the passage you would apologise for, if there is one, and
+**The budget unspent is not a finding by itself.** Three drawings of one subject
+stopped under 150 of 400 with nothing left to mend, so a drawing's `unspent:` line is
+the number alone. The rest goes to the passage you would apologise for, if there is one, and
 nowhere else.
 
 ## Sign it

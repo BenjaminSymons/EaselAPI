@@ -333,3 +333,56 @@ def test_cartridge_is_a_texture_between_smooth_and_linen():
     a = make_texture("cartridge", 60, 80, np.random.default_rng(9))
     b = make_texture("cartridge", 60, 80, np.random.default_rng(9))
     assert np.array_equal(a, b)
+
+
+def test_a_pressure_that_is_not_a_number_is_refused_in_the_painters_words(tmp_path):
+    """A string, a None or a complex in a pressure list used to surface from under the
+    stroke as numpy's own complaint -- `could not convert string to float`, `cannot
+    convert float NaN to integer` -- naming nothing the draftsman wrote; the third
+    drawing's helper handed one over. The error names what a pressure is, and the
+    refused mark leaves no record and no snapshot behind."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.1), (0.9, 0.9)], "HB")
+    before, depth = len(s.history.records), s.history.undo_depth
+    for bad in (["a", 0.5], [0.2, 1 + 2j], [0.2, None], [0.2, float("nan")]):
+        with pytest.raises(ValueError, match=r"A pressure is a number in 0\.\.1"):
+            s.line([(0.1, 0.1), (0.9, 0.9)], "HB", pressure=bad)
+    with pytest.raises(ValueError, match="Unknown pressure profile"):
+        s.line([(0.1, 0.1), (0.9, 0.9)], "HB", pressure="squeeze")
+    assert (len(s.history.records), s.history.undo_depth) == (before, depth)
+
+
+def test_undo_interleaves_paint_and_graphite_and_puts_each_channel_back_in_turn(tmp_path):
+    """A paint stroke over a graphite line and a line over the paint: the two
+    channels are snapshot apart, so each undo restores exactly the channel its mark
+    touched and leaves the other alone. The test the stored goldens lean on, since
+    the medium was added beside the paint and never through it."""
+    s = make(tmp_path)
+    s.stroke([(0.1, 0.5), (0.9, 0.5)], "bristle", "burnt_umber")
+    rgb_a, g_a = s.canvas.rgb.copy(), s.canvas.graphite.copy()
+    assert not g_a.any(), "a paint stroke laid graphite"
+    s.line([(0.1, 0.4), (0.9, 0.6)], "6B", pressure=1.0, tip="side")
+    rgb_b, g_b = s.canvas.rgb.copy(), s.canvas.graphite.copy()
+    assert np.array_equal(rgb_b, rgb_a) and g_b.any()
+    s.stroke([(0.1, 0.6), (0.9, 0.4)], "flat", "ultramarine")
+    rgb_c, g_c = s.canvas.rgb.copy(), s.canvas.graphite.copy()
+    assert not np.array_equal(rgb_c, rgb_b) and np.array_equal(g_c, g_b)
+    s.line([(0.5, 0.1), (0.5, 0.9)], "2B")
+    assert not np.array_equal(s.canvas.graphite, g_c)
+    # Undo the line over the paint: the plane goes back, the paint stays.
+    assert s.undo(1) == 1
+    assert np.array_equal(s.canvas.graphite, g_c) and np.array_equal(s.canvas.rgb, rgb_c)
+    # Undo the paint over the line: the paint goes back, the plane stays.
+    assert s.undo(1) == 1
+    assert np.array_equal(s.canvas.rgb, rgb_b), "undo of a paint stroke did not restore the paint"
+    assert np.array_equal(s.canvas.graphite, g_b), "undo of a paint stroke moved the graphite"
+    # Undo the line over the paint stroke: the plane is bare, the paint is the first stroke.
+    assert s.undo(1) == 1
+    assert np.array_equal(s.canvas.graphite, g_a) and np.array_equal(s.canvas.rgb, rgb_a)
+    assert s.stroke_count == 1
+    # And the rebuild road, with the snapshots gone, lands on the same two channels.
+    s.line([(0.1, 0.4), (0.9, 0.6)], "6B", pressure=1.0, tip="side")
+    s.stroke([(0.1, 0.6), (0.9, 0.4)], "flat", "ultramarine")
+    s.history.invalidate_snapshots()
+    assert s.undo(1) == 1
+    assert np.array_equal(s.canvas.rgb, rgb_b) and np.array_equal(s.canvas.graphite, g_b)

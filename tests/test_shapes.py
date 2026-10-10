@@ -705,3 +705,17 @@ def test_pricing_a_sweep_refuses_what_painting_it_would_refuse(tmp_path):
             s.cost(spec)
         with pytest.raises(ValueError):
             s.sweep(edge, into="down", **bad)
+
+
+def test_a_shape_placed_outside_the_canvas_is_told_so():
+    """Points past the 0..1 square clamp to the edge and fold into one another, and a
+    shape placed off the picture used to be told it had too few points, which sent
+    its painter counting them. Said as what it is, with the unit the coordinates are
+    in; two points on the canvas are still told they are a line, for a drawing too."""
+    with pytest.raises(ValueError, match=r"lies outside the canvas.*48 of its 48"):
+        ellipse((1.6, 1.6), 0.1, 0.1)
+    with pytest.raises(ValueError, match=r"\(0, 0\) its top left"):
+        polygon([(1.2, 1.2), (1.5, 1.2), (1.5, 1.6)])
+    with pytest.raises(ValueError, match=r"s\.line\(\)") as exc:
+        polygon([(0.2, 0.2), (0.6, 0.6)])
+    assert "outside" not in str(exc.value)

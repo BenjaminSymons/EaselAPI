@@ -458,14 +458,33 @@ class Plan:
         the two places actually meet, which is why the mark is the whole point of the
         table. One plan finished all-green with two places planned ``0.00`` apart, and
         they were the two that met.
+
+        A pair that holds the plan's own light says so (:meth:`light_in`): twice a
+        draftsman read *the light and its floor, 0.03 apart* in the same words as any
+        other pair, and took the two for the subject's one light mass. The light is
+        the one place a plan names to be lighter than everything, so a pair it is in
+        is not two masses that might share a value: it is the light with no edge.
         """
         if not rows:
             return f"no two planned places are inside {threshold:.2f} of each other"
         out = [f"planned pairs inside {threshold:.2f}:"]
         for a, b, gap, meets in rows:
             where = "and they meet" if meets else "but they never meet"
-            out.append(f"  {a} / {b}: {gap:.2f} apart, {where}")
+            out.append(f"  {a} / {b}: {gap:.2f} apart, {where}{self.light_in(a, b)}")
         return "\n".join(out)
+
+    def light_in(self, a: str, b: str) -> str:
+        """The words a pair earns when one of its places is the plan's own light.
+
+        ``""`` for any other pair, or with no light named. Said by the plan rather
+        than by whoever prints the pair, so the shell, the server and the notice say
+        it the same way.
+        """
+        if self.lightest is None or self.lightest.name not in (a, b):
+            return ""
+        light, other = (a, b) if self.lightest.name == a else (b, a)
+        return (f"; {light} is the light you declared, so against {other} it has "
+                f"no edge")
 
     # -- the file -----------------------------------------------------------------
     def to_json(self) -> dict:

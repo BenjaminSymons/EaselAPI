@@ -38,6 +38,7 @@ import html
 import json
 import shutil
 import subprocess
+import tempfile
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -314,34 +315,62 @@ def _write_mp4(seq: Iterator[Frame], p: Path, fps: float) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     proc = None
     size = None
-    for frame in seq:
-        img = frame.image
-        if size is None:
-            # yuv420p wants even dimensions; pad by a pixel rather than resample.
-            w, h = img.size
-            size = (w + (w % 2), h + (h % 2))
-            proc = subprocess.Popen(
-                [exe, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-                 "-s", f"{size[0]}x{size[1]}", "-r", f"{float(fps):g}", "-i", "-", "-an",
-                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                 str(p)],
-                stdin=subprocess.PIPE, stderr=subprocess.PIPE,
-            )
-        if img.size != size:
-            padded = Image.new("RGB", size, (18, 18, 20))
-            padded.paste(img, (0, 0))
-            img = padded
-        data = np.asarray(img.convert("RGB"), dtype=np.uint8).tobytes()
-        assert proc is not None and proc.stdin is not None
-        for _ in range(max(1, frame.hold)):
-            proc.stdin.write(data)
-    if proc is None:  # pragma: no cover - the surface is always a frame
-        raise ValueError("Nothing to film.")
-    assert proc.stdin is not None
-    proc.stdin.close()
-    err = proc.stderr.read().decode("utf-8", "replace") if proc.stderr else ""
-    if proc.wait() != 0:
-        raise RuntimeError(f"ffmpeg failed writing {p}: {err.strip()}")
+    # ffmpeg's complaints go to a file rather than a pipe: a pipe nobody drains while
+    # the frames are written is a deadlock the moment ffmpeg has much to say, and the
+    # file is what names the fault when it stops early -- a build without libx264, a
+    # path it cannot write -- where a broken pipe said only `[Errno 22]`.
+    with tempfile.TemporaryFile() as log:
+        stopped = False
+        code = 0
+        try:
+            for frame in seq:
+                img = frame.image
+                if size is None:
+                    # yuv420p wants even dimensions; pad by a pixel rather than resample.
+                    w, h = img.size
+                    size = (w + (w % 2), h + (h % 2))
+                    proc = subprocess.Popen(
+                        [exe, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt",
+                         "rgb24", "-s", f"{size[0]}x{size[1]}", "-r", f"{float(fps):g}",
+                         "-i", "-", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                         "-movflags", "+faststart", str(p)],
+                        stdin=subprocess.PIPE, stderr=log,
+                    )
+                if img.size != size:
+                    padded = Image.new("RGB", size, (18, 18, 20))
+                    padded.paste(img, (0, 0))
+                    img = padded
+                data = np.asarray(img.convert("RGB"), dtype=np.uint8).tobytes()
+                assert proc is not None and proc.stdin is not None
+                try:
+                    for _ in range(max(1, frame.hold)):
+                        proc.stdin.write(data)
+                except OSError:
+                    # ffmpeg stopped reading: its own words, below, say why. Only
+                    # the write is caught -- a frame that fails to build is the
+                    # frame's own error, not a film cut short and called whole.
+                    stopped = True
+                    break
+        finally:
+            if proc is not None:
+                if proc.stdin is not None:
+                    try:
+                        proc.stdin.close()
+                    except OSError:
+                        pass
+                # Reaped whatever happened above: stdin is closed, so this ends.
+                code = proc.wait()
+        if proc is None:  # pragma: no cover - the surface is always a frame
+            raise ValueError("Nothing to film.")
+        log.seek(0)
+        err = log.read().decode("utf-8", "replace").strip()
+    if code != 0 or stopped:
+        # No half-written film left behind to be mistaken for one that plays.
+        try:
+            p.unlink()
+        except OSError:
+            pass
+        raise RuntimeError(f"ffmpeg failed writing {p} (exit {code}): {err or 'no message'}")
     return p
 
 
@@ -495,9 +524,9 @@ function show(i) {
   label.textContent = (k + 1) + ' / ' + frames.length + '  ·  ' + f.label;
   const r = f.index != null ? byIndex.get(f.index) : null;
   mark.innerHTML = '';
-  const rows = r ? [['record', '#' + r.index], ['kind', r.kind], ['tool', r.brush || '—'],
-      ['grade', r.grade || '—'], ['tip', r.tip || '—'], ['pressure', JSON.stringify(r.pressure)],
-      ['dabs', r.dabs], ['landed', Math.round(r.paint)], ['via', r.via || 'by hand'], ['note', r.note || '—']]
+  const rows = r ? [['record', '#' + r.index], ['kind', r.kind], ['tool', r.brush || '-'],
+      ['grade', r.grade || '-'], ['tip', r.tip || '-'], ['pressure', JSON.stringify(r.pressure)],
+      ['dabs', r.dabs], ['landed', Math.round(r.paint)], ['via', r.via || 'by hand'], ['note', r.note || '-']]
     : [['frame', f.kind], ['records laid', f.at]];
   for (const [a, b] of rows) { const dt = document.createElement('dt'); dt.textContent = a;
     const dd = document.createElement('dd'); dd.textContent = String(b); mark.append(dt, dd); }

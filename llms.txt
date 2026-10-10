@@ -27,9 +27,9 @@ s.export("painting.png")
 What to know before reading further:
 
 - The guide ships inside the package: `easel guide` prints its first page, which is
-  the whole method in about 1,400 words, and `easel guide --full`, `--painting`,
-  `--recipes`, `--reference` and `--calibration` print the rest of it. Nothing below has
-  to be fetched over the network if you have installed it.
+  the whole method in about 1,400 words, and `easel guide --full`, `--draftsman`,
+  `--painting`, `--recipes`, `--reference`, `--calibration` and `--diagnosis` print the
+  rest of it. Nothing below has to be fetched over the network if you have installed it.
 - Two commands answer questions rather than printing a document: `easel explain <code>`
   turns a notice the engine gave you into the passage that measured it, and `easel
   diagnose <what you can see>` does the same from the other end — describe what is wrong
@@ -71,7 +71,7 @@ What to know before reading further:
 - [DRAFTSMAN.md](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/DRAFTSMAN.md): **the same guide for a drawing in graphite** (`Session(medium="graphite")`): the loop, the order of work for a pencil, the six mistakes with the fix beside each, nine exercises and a closing checklist, written from what the first test drawing cost. Read it instead of `PAINTER.md`, not as well. Held to a word budget by the test suite; ~4,900 words.
 - [RECIPES.md](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/RECIPES.md): one situation at a time — a scene of straight edges, a silhouette built from parts, a plane, a form that turns, a silhouette lit from one side, a mass built of planes, a glow, a light's pool, a volume of lit air, a graded field, a small irregular mark, a small container, a line of lettering, a lost edge, a hollow thing, a repair, and two entries on composition — each as the calls in order, what it looks like when it goes wrong, and the number behind it. Collected out of the painters' own pass scripts and notes. ~10,800 words, so read one when you are about to lay that thing, not the file.
 - [PAINTING.md](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/PAINTING.md): how the engine behaves — colour and mixing, wet paint and glazes, the brushes and the shape each tool leaves behind, shaped masses and what they cost, the planning verbs, the rest of the API — and, in its last chapter, copying a photograph. The reasons, and `easel explain <code>` prints the one a notice points at; read a section when it does, or the whole thing before the first mark. Skip the last chapter unless you have a photograph. ~7,600 words.
-- [REFERENCE.md](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/REFERENCE.md): every fact on one page — the units (and that is where the surprises are), the defaults, what each argument does, the shell, and the MCP server. For looking up while holding a brush rather than reading. ~12,700 words. Nothing in it is a rule about painting; the rules are all in the guide, and a fact looked up without its rule is how a painting comes out correct and dead.
+- [REFERENCE.md](https://raw.githubusercontent.com/Gemberkoekje/EaselAPI/main/REFERENCE.md): every fact on one page — the units (and that is where the surprises are), the defaults, what each argument does, the shell, and the MCP server. For looking up while holding a brush rather than reading. ~13,400 words. Nothing in it is a rule about painting; the rules are all in the guide, and a fact looked up without its rule is how a painting comes out correct and dead.
 
 ## Worked examples
 

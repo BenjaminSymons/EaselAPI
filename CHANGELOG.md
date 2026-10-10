@@ -108,8 +108,9 @@ log before anything was built (`CALIBRATION.md`, *The check, measured on the fir
 drawing*), and what fired is what was built:
 
 - a finding of the drawing's own: `30` or more marks laid with no look or rehearsal
-  between them. A look is not a record, so where the painter looked is kept beside the
-  log (`Session._looked`, saved as `looked`; a file from before reads its captures);
+  between them (since lowered to over 15, below). A look is not a record, so where
+  the painter looked is kept beside the log (`Session._looked`, saved as `looked`; a
+  file from before reads its captures);
 - `values:` names the box of pencils on this paper; `paper:` stands in for `ground:` as
   the share of the sheet the channel has never touched; `lightest:` carries the share of
   the named light that is paper never touched; `pencil:` names the envelope; and the
@@ -127,7 +128,7 @@ films beside its session file, the looks held and the marks alone.
 **Step 6, run 1: the shakedown drawing.** `drawings/egg_in_bowl/`: a hen's egg in a
 shallow bowl, drawn by a fresh session from `REFERENCE.md`, `PAINTER.md` and
 `CALIBRATION.md` alone -- there is no drawing guide yet -- in 154 of 400 marks, with its
-passes, its session file, its film and its notes, re-measured. Two of the spec's criteria
+passes, its session file, its two films and its notes, re-measured. Two of the spec's criteria
 failed (a look inside every fifteen marks, the darkest value) and two of the agent's
 reasoned causes did not survive measurement; what the run asks of `DRAFTSMAN.md` and of
 the engine is listed at the end of its `NOTES.md`. One fix came out of it: the film fell
@@ -277,6 +278,59 @@ The run's strongest candidate is new: a highlight that is paper against a floor 
 is paper has no edge, and the plan's pairs line at `0.03` apart was the warning the
 agent read as the subject's one light; ten candidates in all at the end of its
 `NOTES.md`, each a hypothesis until a sixth session draws against it.
+
+**Round 6: what three drawings asked of the check, and what a review of the fork
+found.** The engine candidates runs 3, 4 and 5 left at the end of their `NOTES.md`,
+each measured off the session files before it was built (`CALIBRATION.md`, *What the
+third, fourth and fifth drawings asked of the check*), and the faults a read-only
+review and a black-box run of the medium turned up.
+
+- A drawing's closing check carries a standing `looks:` line: the looks taken,
+  rehearsals among them, and the longest run laid with no look between its marks, in
+  the decisions the finding counts, whatever the run. The finding still fires beside
+  it over `15`. On the five drawings' files it reads 66, 21, 13, 12 and 12.
+- A drawing's `unspent:` line is the number alone: three drawings stopped under 150 of
+  400 with nothing left to mend and were each asked to spend the rest, which the guide
+  holds as a reserve. A painting's line keeps its instruction, and a budget overspent
+  now says `24 over the budget of 60` rather than `0 of 60 unspent`.
+- A planned pair the plan's own light is in says so, in the `plan-pairs` notice and in
+  `easel plan`'s table: *the light you declared, so against the floor it has no edge*.
+  Two draftsmen read the light and its floor, `0.03` apart, as the subject's one light.
+- `undo` forgets the looks, the captures and the passes kept past the cut, on both of
+  its paths. They are sidecars keyed by the log's length, and an undo that left them
+  was a film holding a look at a mark never seen and a check crediting a mark laid
+  after the undo with a look taken before it. No committed drawing undid after a look.
+- `tone` on a counted copy (`easel run --count`, the server's `count`) priced every
+  tone at one pass, since the measuring trial inherited the count and laid nothing; it
+  lays now, and prices what the real call lays on the plane as it stands -- a counted
+  pass's own earlier marks are not on it, since counting lays nothing. A `tone` pass
+  that moved nothing is no longer laid or charged: the first such pass is refused as
+  *lays nothing*.
+- `stump(direction=)` is taken in the `0..1` space, as `hatch(angle=)` is, so a stump
+  at `35` runs along a hatch at `35` on any canvas; it was a screen angle, which on
+  1024x768 put the two 8 degrees apart. The record keeps both, and a record from before
+  replays by the screen angle it holds, passed through untouched: no arithmetic inverts
+  the conversion to the bit, and a kernel a hair off its angle moves other pixels.
+- Refused at the call, in the painter's words, where numpy's own words or a silent
+  clamp stood: a pressure that is not a number (a string, a `None`, a complex); a
+  `hatch` with `spacing` at or under `0`, which laid up to a thousand charged lines; a
+  `scribble` with `density` at or under `0`; a `kneaded` with `strength` at or under
+  `0`, which charged a lift that lifted nothing; an eraser handed a path of points, as
+  `stump` takes one; `crosshatch(angle=)` in place of `angles=`; and a shape whose
+  points lie outside the canvas, which clamp to the edge and fold into one, told
+  until now that it had too few points.
+- The `.mp4` writer reads ffmpeg's own complaint when it stops early -- a build without
+  libx264, a path it cannot write -- and says it with the exit code, leaving no
+  half-written film behind; a broken pipe said `[Errno 22]` and leaked the process.
+- The MCP tools refuse an argument they do not take: `guide(draftsman=true)`, the
+  shell's flag mirrored, returned `PAINTER.md` without a word.
+- The *detail before the masses* line no longer counts graphite lines, which are under
+  its size by nature; the check's headers say *drawing* for a drawing; `easel look` on
+  a drawing is its values view, as `look()` is; `easel --help` says the engine draws.
+- `REFERENCE.md`: the paper reads `0.957`; a look is held with its grid only when it
+  was taken with one; `undo` named for what it forgets; the `looks:` row and the
+  `unspent:` and pairs rows. `README.md` counts six guide files and lists
+  `DRAFTSMAN.md` in its table. `llms.txt` names `easel guide --draftsman`.
 
 ## [0.8.0] — 2026-10-01
 

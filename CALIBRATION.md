@@ -502,6 +502,68 @@ What else the log measured, quoted in `DRAFTSMAN.md`:
   films re-rendered: `drawing_looks.mp4` with the looks held, `drawing_strokes.mp4` the
   marks alone.
 
+**What the third, fourth and fifth drawings asked of the check**, each measured off its
+session file before it was built:
+
+- **The `unspent:` line asked a drawing for marks it had no use for.** Runs 3, 4 and 5
+  stopped at 140, 113 and 143 of 400 (65%, 72% and 64% unspent), each after its closing
+  check, each with its planned places read and the darks reached, and each time the
+  line said *name the weakest passage and spend them there*: run 3 spent eight more on
+  its apology passage and stopped, and the others left the rest. The guide holds the
+  rest as a reserve, since a mark this medium lays cannot be painted over, so a
+  drawing's line is the number alone. A painting's is unchanged.
+- **The finding fires over `15` and says nothing under it**, and run 3's draftsman,
+  whose longest run was 13, asked where the number had gone: the guide's closing
+  paragraph had promised the check would say the longest run. A standing `looks:` line
+  carries it in a drawing's closing check: the looks taken, rehearsals among them, and
+  the longest run laid with no look between its marks, counted as the finding counts
+  (a helper call one decision). On the five drawings' files it reads 66, 21, 13, 12 and
+  12, which is the number the pass criterion asks for, and the finding fires beside it
+  on the first two.
+- **The plan's pairs line named the light as any other pair.** Runs 4 and 5 both
+  planned the lit side of the subject within `0.03` to `0.05` of the floor it stands
+  on, and `plan-pairs` said *egg_lit and floor 0.03 apart* in the words it uses for two
+  masses that might share a value; both draftsmen read it as the subject's one light
+  mass, and run 5 found the light had no edge until the floor was toned from `0.96` to
+  `0.83`. A pair the plan's own light is in says so now, in the notice and in the
+  table: *the light you declared, so against the floor it has no edge*.
+- **An undo left the looks beside the log.** The captures, the looks the check reads
+  and the passes are sidecars keyed by the log's length, and an undo cut the log and
+  left them: on a session with a look after each of two marks, `undo(1)` kept both
+  looks, so the film held a look at a mark the painter never saw and a mark laid after
+  the undo was credited with a look taken before it. Fixed on both undo paths, with a
+  test; no committed drawing undid after a look, so none of the five films is
+  affected.
+- **A pressure that is not a number** -- a string, a `None`, a complex, which run 3's
+  helper handed over -- surfaced from under the stroke as numpy's own words, naming
+  nothing the draftsman wrote. It is refused at the call now, with what a pressure is.
+
+**What a review of the fork measured**, read-only over the engine and black-box over
+the shell and the server, before any of it was changed:
+
+- **A counted `tone` was one pass.** The trial `tone` measures on inherited the
+  count from a counted copy and laid nothing, so its first pass read no change and
+  the plan stopped there: `scratch(count_only=True).tone(cell, 0.25, "2B")` priced
+  **10** lines where the real call lays **35**; a `4H` to `0.70`, 10 against 50; an
+  `HB` to `0.42`, 10 against 35. The measuring copy lays now whatever the painting
+  does, and prices what lands.
+- **`stump(direction=)` was a screen angle** where every other direction here is in
+  the `0..1` space: on 800x400 a `hatch(angle=45)` runs at `26.6` degrees on screen
+  and a `stump(direction=45)` ran at `45`, 18 degrees across it; on 1024x768 the two
+  were `37` and `45`. Taken in the `0..1` space now, the record keeping both angles.
+- **`hatch(spacing=0)`** clamped to a thousandth and laid 125 charged lines over one
+  cell and 1,000 over the canvas; `scribble(density=0)` laid one stroke; `kneaded
+  (strength=-1)` charged a lift that lifted nothing; a `tone` at `pressure=0` charged
+  ten lines that deposited nothing. Each refused at the call, nothing laid.
+- **The GIF writer holds its frames**, as Pillow's own writer does: 305 frames of a
+  300-mark drawing at 720 wide peaked at **75 MB** traced, 48 s; not the 190 MB the
+  review estimated, and left as it is.
+- **A whole-canvas stump at 1024x768 takes 0.08 s**; the kernel's loop over its
+  offsets is not where a drawing's time goes.
+- **A 400-mark drawing at 1024x768** with capture on: 23.5 s to draw, 36 s to film,
+  94 s with `--stroke-motion`, 35 s for the viewer; a session file of about 10 MB,
+  the channels compressed.
+
 ---
 
 ## Wetness
@@ -2153,7 +2215,10 @@ planned `0.00` apart; they were the two that met on the canvas, and one dissolve
 the other exactly there. Three of that plan's four close pairs were fine, because those
 masses never met. So the pairs are worth printing and *touching* is the whole of what
 picks them out: `plan-pairs` says only the pairs that are both inside `0.10` and within
-`0.01` of the canvas long side of each other. It is asked at registration, on the empty
+`0.01` of the canvas long side of each other. A pair the plan's own light is in says so,
+since the sixth drawing round: twice a draftsman read *the light and its floor, 0.03
+apart* in the words of any other pair and took the two for the subject's one light
+mass, when it was the light with no edge. It is asked at registration, on the empty
 canvas, because that is the one moment the answer is free — and it was asked of the
 painter rather than answered for them for two rounds, both of which got it wrong, while
 three rounds skipped the empty-canvas run that would have raised the question at all.

@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import json
 import shutil
+from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 
 from easel import Session
-from easel.film import ffmpeg_path, frames, write_film, write_viewer
+from easel.film import CAPTION_H, ffmpeg_path, frames, write_film, write_viewer
 from easel.regions import cell
 
 
@@ -255,3 +256,163 @@ def test_the_viewer_is_a_page_a_json_and_the_frames(tmp_path):
     assert "fetch(" not in text, "the page must open from a file: its data is inline"
     assert s.viewer(tmp_path / "view2", scale=80).exists()
     shutil.rmtree(tmp_path / "view2")
+
+
+def test_an_undo_forgets_the_looks_captures_and_passes_past_the_log(tmp_path):
+    """The sidecars are keyed by the log's length, and an undo that cut the log and
+    left them was a film holding a look at a mark the painter never saw, the check
+    crediting a mark laid after the undo with a look taken before it, and the viewer
+    naming a script line for a record no longer there. Both undo paths forget them;
+    a look taken at exactly the new length is a look at what is still there."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.1), (0.9, 0.9)], "HB")
+    s.look()
+    s.line([(0.1, 0.9), (0.9, 0.1)], "HB")
+    s.look()
+    s.keep_pass(s, "p1.py", [("p1.py", "s.line(...)")], 0)
+    s.rehearse({"hatch": cell("E5"), "grade": "2B"}, region=cell("E5"))
+    assert [c["at"] for c in s.captures] == [1, 2, 2]
+    s.undo(1)
+    assert [c["at"] for c in s.captures] == [1] and s._looked == [1]
+    assert [(p["at"], p["until"]) for p in s.passes] == [(0, 1)]
+    assert list(s.passes[0]["lines"]) <= ["0"]
+    s.line([(0.1, 0.9), (0.9, 0.1)], "HB")
+    assert [f.kind for f in frames(s, hold_looks=1.0)].count("look") == 1
+    # The rebuild path, when the snapshots are gone.
+    s.look()
+    s.history.invalidate_snapshots()
+    s.undo(2)
+    assert len(s.history.records) == 0
+    assert s.captures == [] and s._looked == [] and s.passes == []
+    # A pass that only rehearsed is kept while the log reaches where it began.
+    t = make(tmp_path)
+    t.line([(0.1, 0.1), (0.9, 0.9)], "HB")
+    trial = t.scratch()
+    trial.line([(0.1, 0.9), (0.9, 0.1)], "HB")
+    t.keep_pass(trial, "p2.py", [("p2.py", "s.line(...)")], 1)
+    assert [p["mode"] for p in t.passes] == ["rehearsed"]
+    t.undo(1)
+    assert t.passes == []
+
+
+# --------------------------------------------------------------------------------------
+# The film's edges: what it refuses, leaves out, skips, and writes under a frame
+# --------------------------------------------------------------------------------------
+def test_a_film_is_a_frame_per_at_least_one_mark(tmp_path):
+    """`every=0` is a modulo by nought under the loop; the film says what `every` is."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.5), (0.9, 0.5)], "HB")
+    with pytest.raises(ValueError, match="every"):
+        list(frames(s, every=0))
+    with pytest.raises(ValueError, match="every"):
+        list(frames(s, every=-3))
+
+
+def test_holding_the_looks_for_no_time_leaves_them_out(tmp_path):
+    """`hold_looks=0` is the switch the shell's `--hold-looks 0` turns: no look and no
+    rehearsal frame, and every mark still filmed."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.5), (0.9, 0.5)], "HB")
+    s.look()
+    s.rehearse({"hatch": cell("E5"), "grade": "2B"}, region=cell("E5"))
+    s.line([(0.1, 0.2), (0.9, 0.3)], "2B")
+    assert [c["kind"] for c in s.captures] == ["look", "rehearse"]
+    kinds = [f.kind for f in frames(s, every=1, scale=80, hold_looks=0)]
+    assert "look" not in kinds and "rehearse" not in kinds
+    assert kinds == ["start", "mark", "mark", "end"]
+
+
+def test_a_rehearsal_whose_picture_is_gone_is_skipped_while_the_looks_still_play(tmp_path):
+    """A look is re-rendered on the rebuilt canvas; a rehearsal's picture is the path
+    not taken, and only its PNG holds it. One deleted from `out_dir` is a frame the
+    film cannot make, and it is left out rather than failing the whole film."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.5), (0.9, 0.5)], "HB")
+    s.look()
+    s.rehearse({"hatch": cell("E5"), "grade": "2B"}, region=cell("E5"))
+    s.line([(0.1, 0.2), (0.9, 0.3)], "2B")
+    s.look(values=True)
+    kinds = [f.kind for f in frames(s, every=1, scale=80, hold_looks=0.5, fps=12)]
+    assert kinds.count("look") == 2 and kinds.count("rehearse") == 1
+    (rehearsal,) = [c for c in s.captures if c["kind"] == "rehearse"]
+    png = Path(s.out_dir) / rehearsal["file"]
+    assert png.exists()
+    png.unlink()
+    kinds = [f.kind for f in frames(s, every=1, scale=80, hold_looks=0.5, fps=12)]
+    assert kinds.count("look") == 2 and kinds.count("rehearse") == 0
+    assert kinds.count("mark") == len(s.history.records)
+
+
+def test_captions_name_the_grade_under_each_mark_in_the_frames_listing(tmp_path):
+    """Through the PNG-directory writer, where the listing keeps each frame's label
+    beside its file: a mark's caption carries its index and its pencil."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.5), (0.9, 0.5)], "HB")
+    s.line([(0.1, 0.2), (0.9, 0.3)], "6B", pressure=0.9)
+    folder = write_film(s, tmp_path / "captioned", every=1, scale=80, hold_looks=0,
+                        captions=True)
+    listed = json.loads((folder / "frames.json").read_text(encoding="utf-8"))
+    marks = [entry for entry in listed if entry["kind"] == "mark"]
+    assert len(marks) == 2
+    for entry, record in zip(marks, s.history.records, strict=True):
+        assert f"#{record.index:03d}" in entry["label"]
+        assert record.params["grade"] in entry["label"], entry["label"]
+    assert "HB" in marks[0]["label"] and "6B" in marks[1]["label"]
+    with Image.open(folder / marks[0]["file"]) as im:
+        assert im.size[1] == 60 + CAPTION_H, "the caption strip is not under the frame"
+
+
+def test_the_viewers_scrub_data_lines_up_with_the_log(tmp_path):
+    """What the page's side panel reads: a mark frame's `index` is the record laid at
+    its `at`, a held look's `hold` is the seconds asked for at the film's rate, and
+    the last frame is the whole log."""
+    s = make(tmp_path)
+    s.line([(0.1, 0.5), (0.9, 0.5)], "HB")
+    s.look()
+    s.hatch(cell("E5"), angle=30, grade="2B", spacing=0.05)
+    s.look(grid=True)
+    hold_looks, fps = 0.75, 8.0
+    page = write_viewer(s, tmp_path / "scrub", scale=80, hold_looks=hold_looks, fps=fps)
+    data = json.loads((page.parent / "film.json").read_text(encoding="utf-8"))
+    records = data["records"]
+    marks = [f for f in data["frames"] if f["kind"] == "mark"]
+    assert len(marks) == len(records) == len(s.history.records)
+    for f in marks:
+        assert f["index"] == records[f["at"] - 1]["index"], f
+    looks = [f for f in data["frames"] if f["kind"] == "look"]
+    assert len(looks) == 2 and all(f["hold"] == round(hold_looks * fps) for f in looks)
+    assert all(f["index"] is None for f in looks)
+    assert data["frames"][-1]["kind"] == "end" and data["frames"][-1]["at"] == len(records)
+    assert data["frames"][0]["at"] == 0
+
+
+def test_an_mp4_that_ffmpeg_cannot_write_is_named_and_not_left_behind(tmp_path, monkeypatch):
+    """An ffmpeg that stops early -- a build without libx264, a path it cannot
+    write -- used to surface as a broken pipe's `[Errno 22]` and leave a partial
+    file that looked like a film. The error carries ffmpeg's exit code and its own
+    words, and the file is gone. The stand-in is a script that complains and exits 3."""
+    import os
+    import stat
+
+    import easel.film as film
+
+    if os.name == "nt":
+        stand_in = tmp_path / "ffmpeg.cmd"
+        stand_in.write_text("@echo libx264 missing 1>&2 & exit /b 3\r\n", encoding="ascii")
+    else:
+        stand_in = tmp_path / "ffmpeg"
+        stand_in.write_text("#!/bin/sh\necho libx264 missing >&2\nexit 3\n", encoding="ascii")
+        try:
+            stand_in.chmod(stand_in.stat().st_mode | stat.S_IXUSR)
+        except OSError:
+            pytest.skip("the stand-in ffmpeg cannot be made executable here")
+        if not os.access(stand_in, os.X_OK):
+            pytest.skip("the stand-in ffmpeg cannot be made executable here")
+    monkeypatch.setattr("easel.film.ffmpeg_path", lambda: str(stand_in))
+    s = make(tmp_path)
+    s.line([(0.1, 0.5), (0.9, 0.5)], "HB")
+    out = tmp_path / "broken.mp4"
+    with pytest.raises(RuntimeError, match=r"\(exit 3\): libx264 missing") as caught:
+        film.write_film(s, out, scale=0)
+    assert str(out) in str(caught.value)
+    assert not out.exists(), "a partial film was left behind"

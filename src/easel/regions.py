@@ -433,10 +433,23 @@ class Polygon:
     def __post_init__(self) -> None:
         pts = _clean_points(self.points)
         if len(pts) < 3:
+            # Points off the canvas clamp to its edge and fold into one another: a
+            # shape placed outside the picture arrived here as one or two points, and
+            # was told it had too few, which sent its painter counting them.
+            raw = [(float(x), float(y)) for x, y in self.points]
+            outside = sum(1 for x, y in raw
+                          if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0))
+            if raw and outside > len(raw) // 2:
+                raise ValueError(
+                    f"The shape lies outside the canvas: {outside} of its {len(raw)} "
+                    f"points fall past the 0..1 square, and clamped to the edge they "
+                    f"meet in {len(pts)}. Coordinates are fractions of the canvas, "
+                    f"(0, 0) its top left and (1, 1) its bottom right."
+                )
             raise ValueError(
                 f"A shape needs at least three distinct points, got {len(pts)}. "
-                f"Two points are a line: paint it with s.stroke(), or give it a "
-                f"width with ribbon(points, width)."
+                f"Two points are a line: paint it with s.stroke(), draw it with "
+                f"s.line(), or give it a width with ribbon(points, width)."
             )
         if abs(_signed_area(pts)) < 1e-7:
             raise ValueError(

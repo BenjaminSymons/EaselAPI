@@ -978,3 +978,33 @@ def test_film_writes_the_film_and_the_viewer_and_needs_one_of_them(tmp_path, cal
     folder = call("film", session=drawing, output=str(tmp_path / "frames"), every=2,
                   scale=120, hold_looks=0).text
     assert len(list(Path(folder).glob("frame_*.png"))) < records + 2
+
+
+def test_run_keeps_the_pass_for_the_film_when_the_drawing_captures(call, drawing):
+    """The server's `run` keeps a pass beside the log as `easel run` does, since a
+    drawing made over MCP has no shell to have run it: painted, spanning exactly the
+    records it laid, with every one of them mapped to a line of the script."""
+    before = len(Session.load(drawing).history.records)
+    call("run", session=drawing,
+         script="s.line([(0.2, 0.7), (0.8, 0.75)], '2B')\n"
+                "s.hatch(cell('F6'), angle=60, grade='HB', spacing=0.05)")
+    loaded = Session.load(drawing)
+    after = len(loaded.history.records)
+    assert after > before + 1
+    kept = loaded.passes[-1]
+    assert kept["mode"] == "painted"
+    assert (kept["at"], kept["until"]) == (before, after)
+    assert set(kept["lines"]) == {str(i) for i in range(before, after)}
+    assert kept["lines"][str(before)][1] == 1 and kept["lines"][str(after - 1)][1] == 2
+    assert kept["sources"] and "s.hatch(cell('F6')" in kept["sources"][0][1]
+
+
+def test_a_tool_refuses_an_argument_it_does_not_take(call, tmp_path):
+    """`guide(draftsman=true)`, the shell's flag mirrored by a client that read `easel
+    guide --help`, returned PAINTER.md without a word, since the SDK's argument model
+    drops an unknown key; the one channel a client has is the reply, so it says so."""
+    with pytest.raises(Exception, match=r"draftsman"):
+        call("guide", draftsman=True)
+    with pytest.raises(Exception, match=r"bogus"):
+        call("new", session=str(tmp_path / "x.easel"), bogus=1)
+    assert "graphite" in call("guide", document="draftsman").text.lower()

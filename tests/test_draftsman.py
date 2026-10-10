@@ -221,6 +221,7 @@ def test_the_arcs_of_one_crescent_are_not_a_stack_of_bars(tmp_path):
     egg, *15 of 15 long marks within 6 degrees*. A mark that turns `_REPORT_TURN_DEG`
     or more between its first step and its last is not a bar."""
     import math
+
     from easel.session import _REPORT_TURN_DEG, _mark_turn
 
     s = make(tmp_path)
@@ -361,3 +362,142 @@ def test_a_drawings_plan_line_carries_every_places_reading(tmp_path) -> None:
         p.stroke([(0.1, 0.8), (0.9, 0.8)], "flat", "burnt_umber", size=0.1)
     line = [ln for ln in p.checklist().splitlines() if ln.strip().startswith("plan:")][0]
     assert "A1:H4 0." not in line, line
+
+
+def test_a_drawings_closing_check_carries_the_loop_as_a_standing_line(tmp_path) -> None:
+    """The finding fires over the line and is silent under it, and the third drawing's
+    draftsman, whose longest run was 13, asked where the number had gone. The closing
+    check now says the looks taken and the longest run between them whatever the run;
+    the finding still fires over the line beside it. A painting is not asked."""
+    s = make(tmp_path)
+    lay(s, 3)
+    s.look()
+    lay(s, 5)
+    said = s.checklist()
+    line = [ln for ln in said.splitlines() if ln.strip().startswith("looks:")][0]
+    assert "1 look taken" in line and "5 marks" in line, line
+    assert f"5 to {_REPORT_LOOK_GAP}" in line
+    assert "no look between them: the loop" not in said
+    # Over the line the standing line and the finding say the same number.
+    lay(s, _REPORT_LOOK_GAP - 4)
+    said = s.checklist()
+    assert f"{_REPORT_LOOK_GAP + 1} marks laid with no look between them" in said
+    assert f"{_REPORT_LOOK_GAP + 1} marks, against" in said
+    s.look()
+    assert "2 looks taken, rehearsals among them" in s.checklist()
+    # Helper calls are decisions here too, and the line says both counts.
+    u = make(tmp_path)
+    u.hatch(span("B2", "G5"), angle=30, grade="HB", spacing=0.012)
+    lay(u, 1)
+    assert re.search(r"looks: no look taken; .* \d+ marks in 2 calls, against", u.checklist())
+    p = make(tmp_path, medium="paint")
+    p.stroke([(0.1, 0.2), (0.9, 0.2)], "flat", "burnt_umber", size=0.05)
+    assert "looks:" not in p.checklist()
+
+
+def test_a_drawings_unspent_line_is_the_number_without_the_instruction(tmp_path) -> None:
+    """Three drawings stopped with every planned place met and were each asked to
+    name the weakest passage and spend the rest there, which the guide holds as a
+    reserve. A drawing's line is the number; a painting's keeps the instruction."""
+    s = make(tmp_path, budget=100)
+    lay(s, 4)
+    line = [ln for ln in s.checklist().splitlines() if ln.strip().startswith("unspent:")][0]
+    assert line.strip() == "unspent: 96 of 100 unspent (96%)", line
+    p = make(tmp_path, medium="paint", budget=100)
+    p.stroke([(0.1, 0.2), (0.9, 0.2)], "flat", "burnt_umber", size=0.05)
+    assert "name the weakest passage and spend them there" in p.checklist()
+
+
+def test_a_planned_pair_the_light_is_in_says_so(tmp_path) -> None:
+    """Twice a draftsman read *the light and its floor, 0.03 apart* in the same words
+    as any other pair and took the two for the subject's one light mass. A pair the
+    plan's own light is in says so, in the notice and in the pairs table alike."""
+    s = make(tmp_path)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        s.plan(why="the light", values={"A1:H4": 0.90, "A5:H8": 0.87, "A1:D2": 0.4},
+               lightest="A1:H4")
+    said = [str(w.message) for w in caught if "planned pair" in str(w.message)][0]
+    assert "A1:H4 is the light you declared, so against A5:H8 it has no edge" in said
+    table = s._plan.pairs_text(s.plan_pairs())
+    assert "A1:H4 / A5:H8: 0.03 apart, and they meet; A1:H4 is the light you declared" in table
+    # Without a light named, or for a pair the light is not in, nothing is added.
+    t = make(tmp_path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        t.plan(why="the light", values={"A1:H4": 0.90, "A5:H8": 0.87})
+    assert "light you declared" not in t._plan.pairs_text(t.plan_pairs())
+
+
+def test_the_bars_rule_reads_a_mark_that_turns_either_side_of_its_gate(tmp_path) -> None:
+    """The gate is `_REPORT_TURN_DEG`: a long mark that bends by less is a bar the
+    rule counts, one that bends by more is an arc it leaves alone. Fourteen marks
+    each bending by the gate less two fire the line; the same fourteen bending by
+    the gate more two do not. Held at the number, so a change to it is a change to
+    this test and not a quiet drift of the rule."""
+    import math
+
+    from easel.session import _REPORT_TURN_DEG, _mark_turn
+
+    def bent_by(degrees: float) -> tuple[list[float], str]:
+        s = make(tmp_path)
+        before = len(s.history.records)
+        turn = math.radians(degrees)
+        for i in range(14):
+            y = 0.2 + 0.6 * i / 14
+            # Two legs along the row and a last leg turned by `degrees` in the
+            # canvas's own pixels, which is the frame `_mark_turn` measures in.
+            pts = [(0.1, y), (0.4, y), (0.6, y),
+                   (0.6 + 0.25 * math.cos(turn),
+                    y + 0.25 * math.sin(turn) * (s.canvas.width / s.canvas.height))]
+            s.line(pts, "HB", pressure=0.8, tip="side", width=0.02, smooth=False)
+        turns = [_mark_turn(r, s.canvas) for r in s.history.records[before:]]
+        return turns, s.report(since=before)
+
+    turns, said = bent_by(_REPORT_TURN_DEG - 2)
+    assert all(abs(t - (_REPORT_TURN_DEG - 2)) < 0.1 for t in turns), turns
+    assert "stack of bars" in said, said
+    turns, said = bent_by(_REPORT_TURN_DEG + 2)
+    assert all(abs(t - (_REPORT_TURN_DEG + 2)) < 0.1 for t in turns), turns
+    assert "stack of bars" not in said, said
+
+
+def test_darks_just_under_the_reach_are_said_to_be_under_it(tmp_path) -> None:
+    """The line's remedy is gated on `DARKS_REACH`, and a drawing a few hundredths
+    short of it is told so in the number's own words: the boundary is the number,
+    not a looser one the remedy was tuned to."""
+    s = make(tmp_path)
+    for y in (0.3, 0.4, 0.5, 0.6, 0.7):
+        s.line([(0.05, y), (0.95, y)], "4B", pressure=0.6, tip="side", width=0.12)
+    said = s.checklist()
+    reached = re.search(r"darks: .* (0\.\d\d) of the way from paper to black", said)
+    assert reached, said
+    way = float(reached.group(1))
+    assert DARKS_REACH - 0.06 <= way < DARKS_REACH, f"the probe reached {way}, not just under"
+    assert f"under {DARKS_REACH:.2f}" in said
+
+
+def test_a_drawings_check_is_a_drawings_and_point_lines_are_not_detail(tmp_path) -> None:
+    """A black-box run of the medium: the headers said *painting* over a drawing, and
+    *detail before the masses are down* fired on a drawing that opened with point
+    hatching, since a graphite line is under the paint rule's size by nature and a
+    drawing opens with its envelope and placement lines by the method."""
+    s = make(tmp_path, budget=60)
+    before = len(s.history.records)
+    s.hatch(span("B2", "G5"), angle=30, grade="HB", spacing=0.012)
+    said = s.report(since=before)
+    assert said.startswith("check over this pass")
+    assert "detail before the masses" not in said
+    assert "check over the drawing" in s.report()
+    assert s.checklist().startswith("checklist for this drawing")
+    p = make(tmp_path, medium="paint")
+    assert p.checklist().startswith("checklist for this painting")
+
+
+def test_a_budget_overspent_is_said_as_over(tmp_path) -> None:
+    """`0 of 60 unspent` under a header saying 84 of 60 read as a budget met."""
+    from easel.checklist import unspent_line
+
+    assert unspent_line(84, 60) == "unspent: 24 over the budget of 60"
+    assert unspent_line(84, 60, reserve=True) == "unspent: 24 over the budget of 60"
+    assert unspent_line(60, 60) == "unspent: 0 of 60 unspent (0%)"

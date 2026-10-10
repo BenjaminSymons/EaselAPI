@@ -413,7 +413,7 @@ The drawing is made with `line()`, one stroke at a time, in a channel of its own
 paint never buries and that is charged like paint. **The channel's unit is the value the
 view reports**: `look(values=True)` and `compare()` read a mark as the paper's value
 times what the graphite leaves, so a `6B` at its ceiling of `0.96` leaves four hundredths
-of the paper — value `0.04` on white paper, which reads `0.956` bare.
+of the paper — value `0.04` on white paper, which reads `0.957` bare.
 
 | Grade | Ceiling (share of the way from paper to black) | One pass at `pressure=1.0` takes | Point width | How the point spreads under pressure |
 |---|---|---|---|---|
@@ -474,7 +474,12 @@ does, so `thumbnail()` draws them; `cost()`, `preview()` and `rehearse()` take a
 (`grade=`), a hatch (`hatch=`), a scribble (`scribble=`) and a contour (`contour=`) as
 plan entries. A stump redistributes the graphite over a reach of about eight pixels at
 1024, twice that along its direction and half across, and keeps a twentieth of what it
-moved; it fills the tooth as it goes. An eraser lifts toward a ghost rather than to
+moved; it fills the tooth as it goes. Its `direction=` is an angle in the `0..1` space,
+as `hatch(angle=)` is, so a stump at `35` runs along a hatch at `35`; a path's own
+direction is read off the path. Refused, laying nothing: a `hatch` with `spacing` at
+or under `0`, a `scribble` with `density` at or under `0`, a `kneaded` with
+`strength` at or under `0`, a `tone` whose first pass moves nothing, and an eraser
+handed a path, which is `stump`'s. An eraser lifts toward a ghost rather than to
 white — `g × (0.03 + 0.25 g)` of what was there stays, so a dark soft mark leaves more
 than a light hard one — and a second pass lifts again from what is left. Neither
 eraser burnishes; the plastic eraser's burnish is measured before it is built.
@@ -648,8 +653,9 @@ script.
 | `ground:` | the share of the canvas that is **still bare ground** | after every pass; it says so under `0.5%` |
 | `paper:` | in a drawing, in place of `ground:`: the share of the sheet that is **paper never touched**, read off the graphite channel | after every pass of a drawing; it says so under `0.5%` |
 | `pencil:` | graphite still showing; in a drawing, how much of the envelope still shows | left off once there is none |
-| `boxes:`, `unspent:` | the masses laid in a rectangle, and what is left of the budget | in the closing checklist only; `boxes:` in a painting's, since a drawing lays no mass of that kind |
+| `boxes:`, `unspent:` | the masses laid in a rectangle, and what is left of the budget | in the closing checklist only; `boxes:` in a painting's, since a drawing lays no mass of that kind. `unspent:` asks a painting to name the weakest passage while a third or more is left; a drawing's is the number alone, since its guide holds the rest as a reserve |
 | `darks:` | in a drawing, how far the darkest half-percentile reached from the paper toward black, against `0.80` | in the closing checklist only |
+| `looks:` | in a drawing, the looks taken, rehearsals among them, and the longest run laid with no look between any two of its marks, in the decisions the finding above counts | in the closing checklist only, whatever the run: the finding fires beside it over `15`, and this line tells 13 from 2 |
 
 Their thresholds are under *The measurement lines, on the finished canvases* in
 `CALIBRATION.md`. All of them count the painting behind a rehearsal copy, not the copy's
@@ -674,7 +680,7 @@ subject runs that way* cannot tell whether the subject does, and the painter can
 
 | Declared | What the check does with it |
 |---|---|
-| `values={place: 0.70, ...}` | at registration, on the empty canvas, `plan-pairs` names the pairs planned within `0.10` **that meet**. After every pass: `plan: 5 of 6 places inside 0.10; halo +0.14`, the sign being the canvas minus the plan. A place reads by its **median** — what most of it reads, so an eye inside a planned plane does not move what the plane reads — and a place the line names that has a tenth of itself or more over `0.15` from that median says so: `halo +0.14 (18% of it lighter by more than 0.15)`. `compare(s.plan())` reads places the same way |
+| `values={place: 0.70, ...}` | at registration, on the empty canvas, `plan-pairs` names the pairs planned within `0.10` **that meet**. After every pass: `plan: 5 of 6 places inside 0.10; halo +0.14`, the sign being the canvas minus the plan. A place reads by its **median** — what most of it reads, so an eye inside a planned plane does not move what the plane reads — and a place the line names that has a tenth of itself or more over `0.15` from that median says so: `halo +0.14 (18% of it lighter by more than 0.15)`. `compare(s.plan())` reads places the same way. A pair the plan's own light is in says so, in the notice and in `easel plan`'s table alike: *A1:H4 is the light you declared, so against A5:H8 it has no edge* |
 | `lightest=place` | `lightest: lamp reads 0.49 as a place, 0.59 at its brightest twentieth, the lightest of the 4 places planned` — or which place took the light instead, and by how much. A place the line names that is split says so in brackets, as on `plan:`: `lantern reads 0.51 as a place (10% of it darker by more than 0.15)`. The places are ranked by their medians; the named light is also read at its 95th percentile, because a light is often a small bright part of a place that is mostly something else. Where the two numbers are far apart, plan the lit part as a place of its own, at the value that place will read — not the value its mixture was mixed at |
 | `subject_share=0.40` | the `subject:` line always carries *against 40% planned*, with no `report(subject_share=)` to remember. It is the one declaration that was reachable before and unreachable from a shell |
 | `bands="subject"` | the stack-of-bars line stops warning and counts: *bands declared as the subject: 14 long marks run within 6 degrees of horizontal, and nothing crosses them yet* |
@@ -803,7 +809,9 @@ s.guides s.guide(points, note="")        s.unguide(note=None)
                    # graphite line on a light casing, which reads over any paint
 s.scratch(count_only=False)   # a throwaway copy: the painter's scrap of canvas,
 s.undo(n)          # counting on log entries, not marks you paid for; puts the
-                   # stream back too. count_only skips the pixel work
+                   # stream back too, and forgets the looks, captures and passes
+                   # kept past the cut, since the film and the check read them.
+                   # count_only skips the pixel work
 s.replay(upto=None, frames=None)   # frames=<px> records a time-lapse as it rebuilds,
                    # which is what timelapse_gif(from_log=True) is made of: the film
                    # at any size, from a painting that recorded no frames at all
@@ -822,13 +830,14 @@ s.captures  s.passes   s.keep_pass(target, scripts, sources, since)
 thinned past 200; `film` rebuilds the log onto a fresh session one record at a time,
 so a 400-mark drawing is 400 frames. Under `capture=True` each `look()` and
 `rehearse()` is kept beside the log with the log index it was taken at, and the film
-holds it there for `hold_looks` seconds, re-rendered on the rebuilt canvas with its grid
-(a rehearsal from its own PNG, when it is still in `out_dir`); each pass `easel run` or
-the server runs is kept with its scripts' text and the line each mark was laid from, and
-the viewer shows that line beside the mark. `stroke_motion` lays each graphite stroke
-over three frames — its first third, its second, the whole — so a long line travels;
-a paint stroke arrives whole. Nothing here is a record: the log indexes the stream, and
-a look that took an index would repaint every painting made before it.
+holds it there for `hold_looks` seconds, re-rendered on the rebuilt canvas and gridded
+only when the look was (a rehearsal from its own PNG, when it is still in `out_dir`);
+each pass `easel run` or the server runs is kept with its scripts' text and the line
+each mark was laid from, and the viewer shows that line beside the mark.
+`stroke_motion` lays each graphite stroke over three frames — its first third, its
+second, the whole — so a long line travels; a paint stroke arrives whole. Nothing here
+is a record: the log indexes the stream, and a look that took an index would repaint
+every painting made before it.
 
 ```bash
 easel new p.easel --size 1024x768 --texture linen --ground toned_grey --seed 7 --budget 300 [--frame-px 720] [--no-prelude] [--medium graphite] [--capture]

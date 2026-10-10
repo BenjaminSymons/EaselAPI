@@ -142,11 +142,11 @@ method on one page, so the ten warm-up exercises come before anything else.
 **If you have already installed the package you do not need that link.** All seven
 documents ship inside the wheel: `python -m easel guide` prints the first hour,
 `--full` prints the rest, and `easel.docs.read()` hands you any of them as text. The
-sixth is [`DIAGNOSIS.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/DIAGNOSIS.md),
+seventh is [`DIAGNOSIS.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/DIAGNOSIS.md),
 an index of symptoms rather than a document to read — you have rehearsed a pass, it is
 wrong, and `easel diagnose concentric rings` prints the passage that measured it.
 
-It is one file of five, and every rule in the five is stated once, in the file it
+It is one file of six, and every rule in the six is stated once, in the file it
 belongs to, and linked from everywhere else. `PAINTER.md` is held to a word budget by
 the test suite so that it stays the file a painter can hold in their head; the numbers
 it quotes are measured in `CALIBRATION.md`, and what painters reported about their own
@@ -155,10 +155,11 @@ sessions is kept there too rather than beside the rules.
 | | |
 |---|---|
 | [`PAINTER.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/PAINTER.md) | the method: the loop, the order of work, the mistakes, the exercises, the checklist. Held in your head |
+| [`DRAFTSMAN.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/DRAFTSMAN.md) | the same method for a drawing in graphite; a draftsman reads it in place of `PAINTER.md` |
 | [`RECIPES.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/RECIPES.md) | one situation at a time: the calls in order, what it looks like when it goes wrong, and the number behind it |
 | [`PAINTING.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/PAINTING.md) | how the paint, the brushes and the planning tools behave; copying a photograph, in its last chapter. The reasons, and `easel explain <code>` prints the one a notice points at |
 | [`REFERENCE.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/REFERENCE.md) | the facts: units, defaults, what each argument does |
-| [`CALIBRATION.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/CALIBRATION.md) | the measurement behind every number the other four quote, each with what it was measured on |
+| [`CALIBRATION.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/CALIBRATION.md) | the measurement behind every number the other five quote, each with what it was measured on |
 
 The engine is designed around one habit:
 
@@ -454,7 +455,7 @@ are.
 
 ## Where the rest of it is written down
 
-The guide's own five files are in the table above. Two more sit behind them, for
+The guide's own six files are in the table above. Two more sit behind them, for
 somebody working on the project rather than painting with it.
 [`LESSONS.md`](https://github.com/Gemberkoekje/EaselAPI/blob/main/LESSONS.md) is what six measured painting runs and an adversarial
 review left behind: the method, the engine decisions that are load-bearing, the traps,

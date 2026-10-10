@@ -175,7 +175,19 @@ def pressure_curve(pressure, n: int) -> np.ndarray:
             f"Use one of {', '.join(PRESSURE_PROFILES)}, a number, or a list."
         )
 
-    arr = np.atleast_1d(np.asarray(pressure, dtype=np.float32))
+    # Said in the painter's terms before numpy says it in its own: a string, a None or
+    # a complex in a list used to surface as `could not convert string to float` or
+    # `cannot convert float NaN to integer` from somewhere under the stroke, naming
+    # nothing the painter wrote.
+    try:
+        arr = np.atleast_1d(np.asarray(pressure, dtype=np.float32))
+    except (TypeError, ValueError):
+        arr = None
+    if arr is None or not np.all(np.isfinite(arr)):
+        raise ValueError(
+            f"A pressure is a number in 0..1, a list of them, or a profile name "
+            f"({', '.join(PRESSURE_PROFILES)}); got {pressure!r}."
+        ) from None
     if arr.size == 0:
         raise ValueError("A pressure list needs at least one value.")
     if arr.size == 1:
@@ -660,7 +672,7 @@ def draw_graphite(
     canvas: Canvas,
     points,
     grade: str | Grade = "HB",
-    pressure="taper",
+    pressure=0.5,
     tip: str = "point",
     width: float | None = None,
     rng: np.random.Generator | None = None,

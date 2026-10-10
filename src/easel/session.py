@@ -2274,7 +2274,7 @@ class Session:
                 darker and reaches further into the tooth; on the ``point`` it is
                 wider too, by as much as the grade allows.
             tip: ``"point"``, the lead's point, for a line; or ``"side"``, the lead
-                laid over, for a broad toothy mark four to eight points wide, following
+                laid over, for a broad toothy mark four to twelve points wide, following
                 the stroke's direction -- how a mass is laid.
             width: the mark's width as a fraction of the canvas long side. Left off,
                 the grade's own line width for the point and one width for the side.
@@ -2406,6 +2406,11 @@ class Session:
     def crosshatch(self, place, angles=(30, 120), **kw) -> list[StrokeRecord]:
         """Two or more hatches over one place, one per angle: :meth:`hatch` with a
         sequence. ``angles`` are in the ``0..1`` space, as every direction here is."""
+        if "angle" in kw:
+            raise TypeError(
+                "crosshatch() takes angles=, a sequence, in place of hatch()'s angle=; "
+                "one angle is a hatch()."
+            )
         return self.hatch(place, angle=list(angles), **kw)
 
     def contour(
@@ -2574,6 +2579,10 @@ class Session:
         """
         trial = self._trial_session()
         trial._solving = True
+        # The measuring copy lays, whatever the painting does: a counted copy's trial
+        # inherited the count and laid nothing, so every tone it priced was one pass,
+        # and `easel run --count` under-quoted a four-pass tone by four.
+        trial._counting = False
         plan: list[tuple[int, object]] = []
         for k in range(_TONE_MAX_PASSES):
             kept_plane = trial.canvas.graphite.copy()
@@ -2584,9 +2593,17 @@ class Session:
                              pressure, "")
             after = self._median_value(trial.canvas, mask)
             if after > target + _TONE_TOL:
-                plan.append((k, pressure))
                 if after >= before - 1e-4:
-                    break               # this grade has nothing more to give here
+                    # This pass moved nothing, so it is not laid and not charged: the
+                    # grade has nothing more to give here, or the pressure lays nothing.
+                    if not plan:
+                        raise ValueError(
+                            f"tone(value={target:.3f}) at pressure {pressure!r} lays "
+                            f"nothing on this place: a {g.name} pass left it at "
+                            f"{after:.3f}. Press harder, or take a softer grade."
+                        )
+                    break
+                plan.append((k, pressure))
                 continue
             if after >= target - _TONE_TOL:
                 plan.append((k, pressure))
@@ -2666,6 +2683,8 @@ class Session:
         direction=None,
         width: float = 0.03,
         note: str = "",
+        *,
+        _screen: float | None = None,
     ) -> StrokeRecord:
         """Blend the graphite: a stump dragged along a path, or worked over a place.
 
@@ -2682,14 +2701,25 @@ class Session:
             place: a run of points to drag along, or a shape, a region or a name to
                 work over.
             strength: how far each pixel moves toward the blended value, ``0..1``.
-            direction: degrees, screen angle, to bias the blend along; left off, a
-                path's own direction, or every way over a shape.
+            direction: degrees to bias the blend along, in the ``0..1`` space as
+                :meth:`hatch` takes its angle, so a stump at ``direction=35`` runs
+                along a hatch at ``angle=35``; a name or a line of two points works
+                too. Left off, a path's own direction, or every way over a shape.
             width: a path's footprint, as a fraction of the canvas long side.
             note: recorded in the log.
+            _screen: the replay's, for a record from before ``direction`` was taken
+                in the ``0..1`` space: the screen angle it holds, passed straight
+                through, since no arithmetic inverts :meth:`_screen_degrees` to the
+                bit and a kernel a hair off its angle moves other pixels.
         """
         s = float(np.clip(strength, 0.0, 1.0))
         outline = _outline_of(place, "stump")
         canvas = self.canvas
+        # The kernel works in pixels, so the angle it is given is the screen's: what
+        # the painter gave is kept beside it in the record, in the space it was given.
+        given = None if direction is None else _angle_of(direction)
+        screen = (float(_screen) if _screen is not None
+                  else None if given is None else self._screen_degrees(given))
         if outline is None:
             pts = np.atleast_2d(np.asarray(place, dtype=np.float32))
             if pts.ndim != 2 or pts.shape[1] != 2 or not np.isfinite(pts).all():
@@ -2699,10 +2729,10 @@ class Session:
                             spacing=0.15, jitter=0.0, size_jitter=0.0, angle_follow=False)
             box = _stroke_box(canvas, pts, carrier, True)
             cover, origin = _path_cover(canvas, pts, carrier, box)
-            if direction is None:
+            if screen is None:
                 dx = (float(pts[-1, 0]) - float(pts[0, 0])) * (canvas.width - 1)
                 dy = (float(pts[-1, 1]) - float(pts[0, 1])) * (canvas.height - 1)
-                direction = math.degrees(math.atan2(dy, dx)) if math.hypot(dx, dy) > 1e-6 else None
+                screen = math.degrees(math.atan2(dy, dx)) if math.hypot(dx, dy) > 1e-6 else None
             held = None
             points = [[float(x), float(y)] for x, y in pts]
         else:
@@ -2714,14 +2744,19 @@ class Session:
         try:
             index = self._index_base + len(self.history.records)
             moved = 0.0 if self._counting else canvas.stump_graphite(
-                cover, origin, s, None if direction is None else float(direction))
+                cover, origin, s, screen)
             record = self.history.add(StrokeRecord(
                 index=index, kind="stump", brush="stump", points=points,
                 pressure=s, dabs=int(np.count_nonzero(cover > 0.01)), paint=moved,
                 note=note or ("stump " + (held.name if held is not None and held.name
                                            else ("shape" if held is not None else "along"))),
                 params={"strength": s,
-                        "direction": None if direction is None else float(direction),
+                        # The screen angle the kernel ran at, and the direction as
+                        # given: a record without `given` is from before the
+                        # direction was taken in the 0..1 space, replays by the
+                        # screen angle it holds, and stays a record without it.
+                        "direction": screen,
+                        **({} if _screen is not None else {"given": given}),
                         "width": float(width),
                         **(_place_params(held) if held is not None else {}),
                         "rng": self._stream_state(),
@@ -2747,6 +2782,12 @@ class Session:
         line is fine under a dark mass and ruins a highlight, so erase early and plan
         the highlights as paper never touched. One mark, charged.
         """
+        if not float(strength) > 0.0:
+            raise ValueError(
+                f"kneaded(strength={strength!r}) lifts nothing: strength is the share of "
+                f"the liftable graphite one pass takes, over 0 and up to 1; 0.3 to 0.7 "
+                f"is a pass of a kneaded eraser."
+            )
         return self._lift(place, "kneaded", float(np.clip(strength, 0.0, 1.0)), note)
 
     def plastic(self, place, note: str = "") -> StrokeRecord:
@@ -2761,7 +2802,16 @@ class Session:
 
     def _lift(self, place, eraser: str, lift: float, note: str) -> StrokeRecord:
         """What the two erasers share: a place, a share lifted, and a ``lift`` record."""
-        held = as_place(place)
+        try:
+            held = as_place(place)
+        except (TypeError, ValueError) as exc:
+            # A path of points, handed over as stump() takes one, fell through to the
+            # region parser's own complaint about a tuple.
+            raise ValueError(
+                f"{eraser}() lifts over a place -- a shape, a region, a name or a "
+                f"4-tuple -- got {place!r}. A path of points is stump()'s; to lift along "
+                f"one, give the shape it crosses."
+            ) from exc
         canvas = self.canvas
         cover, origin = _place_cover(canvas, held,
                                      soften=max(2, int(round(canvas.long_side * _KNEADED_EDGE)))
@@ -3071,6 +3121,7 @@ class Session:
                     self.history.drop_last_frames(
                         sum(1 for r in undone if r.kind != "dry")
                     )
+                self._forget_after(len(self.history.records))
                 return n
         # Too few snapshots for the full request (older ones are dropped past
         # MAX_SNAPSHOTS), or none at all because this session came off disk.
@@ -3084,7 +3135,39 @@ class Session:
         # frame is the dearest thing a mark does that is not paint, and every one the
         # rebuild made would be thrown away with the file's next save.
         self._adopt(self.replay(upto=keep, frames=False if self._film_from_log else None))
+        self._forget_after(keep)
         return undone
+
+    def _forget_after(self, length: int) -> None:
+        """Drop what was kept beside the log past its new length, after an undo.
+
+        The looks, the captures and the passes are sidecars keyed by the log's length
+        (:meth:`_capture`, :meth:`keep_pass`), and an undo that cut the log and left
+        them was a film holding a look at a mark the painter never saw, a check
+        crediting a mark laid after the undo with a look taken before it, and a
+        viewer naming a script line for a record that is no longer there. ``length``
+        is the log's length now, in this session's own numbering; a look taken at
+        exactly that length is a look at what is still there, and stays.
+
+        A pass is kept while any of its marks are: a painted pass cut through keeps
+        the lines of the marks that remain and ends where the log does. A rehearsed
+        or counted pass laid nothing on this log, and its ``until`` is the copy's; it
+        is kept while the log reaches where it began.
+        """
+        at = int(self._index_base) + int(length)
+        self._looked = [i for i in self._looked if i <= at]
+        self._captures = [c for c in self._captures if int(c.get("at", 0)) <= at]
+        kept = []
+        for p in self._passes:
+            start = int(p.get("at", 0))
+            if start > at or (p.get("mode") == "painted" and start >= at):
+                continue
+            if p.get("mode") == "painted" and int(p.get("until", start)) > at:
+                p = dict(p, until=at,
+                         lines={k: v for k, v in p.get("lines", {}).items()
+                                if int(k) < at})
+            kept.append(p)
+        self._passes = kept
 
     # -- looking ----------------------------------------------------------------
     def look(
@@ -5207,7 +5290,8 @@ class Session:
                 # The details the pass buried, which are what to lay again.
                 findings.append(f"{_buried_line(buried, showing, what)}\n"
                                 f"    {self._marks_named(details)}")
-        scope = "this pass" if since is not None else "the painting"
+        scope = ("this pass" if since is not None
+                 else "the drawing" if self.medium == "graphite" else "the painting")
         head = f"check over {scope}, {len(marks)} mark{'s' if len(marks) != 1 else ''}: "
         if findings:
             head += f"{len(findings)} thing{'s' if len(findings) != 1 else ''} to look at"
@@ -5533,9 +5617,10 @@ class Session:
         records = self.history.records
         marks = [r for r in records if r.kind not in History.UNPAINTED_KINDS]
         paid = History.paid_marks(list(self._prior) + list(records))
-        head = (f"checklist for this painting -- {self.spent} of {self.budget} marks "
+        what = "drawing" if self.medium == "graphite" else "painting"
+        head = (f"checklist for this {what} -- {self.spent} of {self.budget} marks "
                 f"spent" if self.budget is not None
-                else f"checklist for this painting -- {self.spent} marks spent")
+                else f"checklist for this {what} -- {self.spent} marks spent")
         lines = [head]
         # The audit's own findings, over the whole painting rather than a pass: the
         # discs seen together, the bars, the small marks before the masses. `since=None`
@@ -5578,7 +5663,14 @@ class Session:
         # closing question and not a pass's: beside the boxes and the budget.
         if paid and not self._counting and self.medium == "graphite":
             lines.append(f"  {checklist.darks_line(self._value_view(), self._paper_value())}")
-        lines.append(f"  {checklist.unspent_line(self.spent, self.budget)}")
+            # The loop as a number, beside the finding that fires over the line: a
+            # check silent under 15 cannot tell a run of 13 from one of 2.
+            looks = self._looks_line(records)
+            if looks:
+                lines.append(f"  {looks}")
+        # A drawing holds the rest of its budget as a reserve, by its own guide, so
+        # its line is the number and not the instruction.
+        lines.append(f"  {checklist.unspent_line(self.spent, self.budget, reserve=self.medium == 'graphite')}")
         lines.append("")
         lines.append("three this cannot answer, and they are the ones to answer slowly:")
         lines += [f"  - {one}" for one in self._questions()]
@@ -5787,6 +5879,22 @@ class Session:
         """
         if self.medium != "graphite" or self._counting:
             return ""
+        best = self._longest_unlooked(records)
+        if len(best) <= _REPORT_LOOK_GAP:
+            return ""
+        marks = [r for decision in best for r in decision]
+        line = (f"{_decisions_said(best)} laid with no look between them: the loop is "
+                f"a look every 5 to 15, and a mark not looked at was a guess. s.look() "
+                f"is free, and so is a rehearsal.")
+        said = self._marks_named(marks)
+        return f"{line}\n    {said}" if said else line
+
+    def _longest_unlooked(self, records) -> list[list[StrokeRecord]]:
+        """The longest run of decisions in ``records`` with no look at any mark inside it.
+
+        The measurement under :meth:`_look_gap_finding` and :meth:`_looks_line`, as a
+        list of decisions, each the records one call laid. Empty when nothing was laid.
+        """
         looked = set(self._looked)
         best: list[list[StrokeRecord]] = []
         run: list[list[StrokeRecord]] = []
@@ -5804,16 +5912,31 @@ class Session:
             last_call = call
             if len(run) > len(best):
                 best = list(run)
-        if len(best) <= _REPORT_LOOK_GAP:
+        return best
+
+    def _looks_line(self, records) -> str:
+        """A drawing's standing ``looks:`` line: the loop, as a measurement.
+
+        The finding above prints when a run is over the line and is silent under it,
+        and the third test drawing's draftsman, whose longest run was 13, asked where
+        the number had gone: the guide promised the check would say *the longest run
+        of marks laid with no look between them*, and a check that says nothing under
+        15 cannot tell 13 from 2. So the closing check carries the number as a line of
+        its own, beside the finding that fires over :data:`_REPORT_LOOK_GAP`: the
+        looks taken, rehearsals among them, and the longest run between any two, in
+        decisions as the finding counts them. ``""`` for a painting, which is not held
+        to the loop, and for a counted copy.
+        """
+        if self.medium != "graphite" or self._counting:
             return ""
-        marks = [r for decision in best for r in decision]
-        counted = (f"{len(marks)} marks" if len(marks) == len(best)
-                   else f"{len(marks)} marks in {len(best)} calls")
-        line = (f"{counted} laid with no look between them: the loop is a look every "
-                f"5 to 15, and a mark not looked at was a guess. s.look() is free, and "
-                f"so is a rehearsal.")
-        said = self._marks_named(marks)
-        return f"{line}\n    {said}" if said else line
+        best = self._longest_unlooked(records)
+        if not best:
+            return ""
+        looks = len(self._looked)
+        taken = ("no look taken" if not looks else "1 look taken" if looks == 1
+                 else f"{looks} looks taken, rehearsals among them")
+        return (f"looks: {taken}; the longest run laid with no look between them "
+                f"{_decisions_said(best)}, against a loop of 5 to {_REPORT_LOOK_GAP}")
 
     def _value_view(self) -> np.ndarray:
         """The whole canvas as values, 0..1, the way :func:`compare_plan` reads it.
@@ -6107,7 +6230,10 @@ class Session:
         touching = [row for row in self.plan_pairs() if row[3]]
         if not touching:
             return
-        said = "; ".join(f"{a} and {b} {gap:.2f} apart" for a, b, gap, _ in touching)
+        # A pair the plan's own light is in says so: twice a draftsman read the light
+        # and its floor as the subject's one light mass, in these words.
+        said = "; ".join(f"{a} and {b} {gap:.2f} apart{self._plan.light_in(a, b)}"
+                         for a, b, gap, _ in touching)
         self._notify(
             "plan-pairs",
             f"{len(touching)} planned pair{'s' if len(touching) != 1 else ''} "
@@ -6619,12 +6745,14 @@ class Session:
                 )
             elif record.kind == "stump":
                 place = _place_from_params(record.params)
+                legacy = "given" not in record.params
                 made = fresh.stump(
                     record.points if place is None else place,
                     strength=float(record.params.get("strength", 0.5)),
-                    direction=record.params.get("direction"),
+                    direction=None if legacy else record.params.get("given"),
                     width=float(record.params.get("width", 0.03)),
                     note=record.note,
+                    _screen=record.params.get("direction") if legacy else None,
                 )
             elif record.kind == "lift":
                 made = fresh._lift(
@@ -6670,6 +6798,17 @@ class Session:
                     made.params[key] = record.params[key]
                 else:
                     made.params.pop(key, None)
+
+    def _screen_degrees(self, degrees: float) -> float:
+        """An angle in the ``0..1`` space as the angle it is on screen.
+
+        The same arithmetic :func:`_line_angle` explains the other way round: a
+        direction of ``45`` on 1024x768 runs at ``37`` on screen, since a unit across
+        is more pixels than a unit down. The stump's kernel works in pixels.
+        """
+        theta = math.radians(float(degrees))
+        return math.degrees(math.atan2(math.sin(theta) * (self.canvas.height - 1),
+                                       math.cos(theta) * (self.canvas.width - 1)))
 
     def _adopt(self, other: Session) -> None:
         """Take on another session's canvas, history and rng, keeping our own identity."""
@@ -9060,6 +9199,15 @@ def _call_of(r: StrokeRecord):
     return (via, state.get("state"), state.get("inc"))
 
 
+def _decisions_said(decisions: list[list[StrokeRecord]]) -> str:
+    """A run of decisions as the check says it: ``12 marks``, or ``40 marks in 4 calls``
+    when a helper laid several of them at one call."""
+    marks = sum(len(decision) for decision in decisions)
+    if marks == len(decisions):
+        return f"{marks} mark{'s' if marks != 1 else ''}"
+    return f"{marks} marks in {len(decisions)} call{'s' if len(decisions) != 1 else ''}"
+
+
 def _nothing_cause(r: StrokeRecord, canvas) -> tuple[str, object]:
     """Why a mark that laid no paint laid none, as far as its own record can say.
 
@@ -10029,8 +10177,11 @@ def _pass_findings(marks: list[StrokeRecord], earlier: int, canvas,
             small_comb,
         )
 
-    # Detail before the masses are down.
-    small = [r for r in marks if float(r.params.get("size", 1.0)) < _REPORT_SMALL_MARK]
+    # Detail before the masses are down. A graphite line is under the size by its
+    # nature -- a point is a point -- and a drawing opens with its envelope and its
+    # placement lines by the method, so the rule is the paint's.
+    small = [r for r in marks if r.kind != "graphite"
+             and float(r.params.get("size", 1.0)) < _REPORT_SMALL_MARK]
     if earlier + len(marks) <= _REPORT_EARLY_MARKS and len(small) >= _REPORT_EARLY_COUNT:
         found(
             f"{len(small)} marks under size={_REPORT_SMALL_MARK} inside the painting's "
@@ -11188,7 +11339,7 @@ def _warn_older_engine(session, session_path: Path, saved_by: str) -> None:
 # The graphite medium's helpers
 # --------------------------------------------------------------------------------------
 #: How close to its value a `tone` has to land, and how many passes and how many
-#: bisection steps it may take getting there. Four hundredths is under the tenth that
+#: bisection steps it may take getting there. Two hundredths is under the tenth that
 #: separates two planned masses and over the noise a side pass's tooth leaves in a
 #: median.
 _TONE_TOL = 0.02
@@ -11209,12 +11360,23 @@ _KNEADED_EDGE = 6.0 / 1024.0
 def _hatch_spacing(b: Brush, tip: str, spacing) -> float:
     """How far apart a hatch's lines sit: as asked, or the tip's own default."""
     if spacing is not None:
+        if not float(spacing) > 0.0:
+            raise ValueError(
+                f"spacing={spacing!r} is not a distance: a hatch's spacing is a fraction "
+                f"of the long side, over 0. Left off, it is 2.5 line widths on the "
+                f"point and half the side's width."
+            )
         return max(float(spacing), 0.001)
     return max(b.size * (2.5 if tip == "point" else 0.5), 0.0025)
 
 
 def _scribble_count(density: float) -> int:
     """How many zigzag strokes a scribble is: four at ``density=1``."""
+    if not float(density) > 0.0:
+        raise ValueError(
+            f"density={density!r} lays no scribble: four strokes at density=1, "
+            f"and more with more."
+        )
     return max(1, int(round(4.0 * float(density))))
 
 

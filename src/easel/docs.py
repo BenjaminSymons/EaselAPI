@@ -13,8 +13,9 @@ or from a checkout, where that directory does not exist because nothing has been
 built yet. Both have to work: the repository itself is used through
 `pip install -e .`, which is a checkout.
 
-The guide is five of them rather than the three it started as, split by function --
-method, situations, the engine's behaviour, facts, numbers -- and since the tenth
+The guide is six of them rather than the three it started as, split by function --
+method, the method for a pencil, situations, the engine's behaviour, facts, numbers --
+and since the tenth
 round every rule is stated once, in the file it belongs to, and linked from the
 others; `scripts/check_guide_overlap.py` says whether a sentence has crept into
 two files. `PAINTER.md` is held to :data:`FRONT_PAGE_WORDS` so that it stays the
@@ -23,8 +24,8 @@ file a painter can hold in their head. `LESSONS.md` has the reasoning.
 `DRAFTSMAN.md` is the graphite medium's `PAINTER.md`, read instead of it and held to a
 budget of its own; see :data:`GUIDES`.
 
-`DIAGNOSIS.md` is a sixth file here and not a sixth guide file: it states no rule,
-it is an index of symptoms pointing at the five, and it says on its own first line
+`DIAGNOSIS.md` is a seventh file here and not a seventh guide file: it states no rule,
+it is an index of symptoms pointing at the six, and it says on its own first line
 that it is not for reading. It ships because it was written to be grepped and there
 was nothing to grep from an installed wheel. :mod:`easel.diagnosis` is what reads
 it, and `easel diagnose` is how a painter should meet it.
