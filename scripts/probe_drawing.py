@@ -95,9 +95,14 @@ def main(argv: list[str]) -> int:
     if len(argv) > 1 and Path(argv[1]).exists():
         from PIL import Image
         exported = np.asarray(Image.open(argv[1]).convert("RGB"), dtype=int)
-        if exported.shape == again.canvas.to_srgb8().shape:
-            off = int((np.abs(again.canvas.to_srgb8().astype(int) - exported).max(axis=2) > 1).sum())
-            print(f"export: {off} pixels more than one level off the replay")
+        # The export leaves the envelope out (`easel export --no-sketch`), so the
+        # replay is read the same way; with the pencil in, run 6's export read 11,789
+        # pixels off a replay that matched it exactly.
+        rebuilt = again.canvas.to_srgb8(sketch=False).astype(int)
+        if exported.shape == rebuilt.shape:
+            off = int((np.abs(rebuilt - exported).max(axis=2) > 1).sum())
+            print(f"export: {off} pixels more than one level off the replay, envelope out "
+                  f"(criterion: 0)")
     print(s.checklist())
     return 0
 

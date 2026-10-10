@@ -37,6 +37,22 @@ what was done about them in [`SUGGESTIONS.md`](SUGGESTIONS.md), and the method i
 
 ## [Unreleased]
 
+**Run 6's candidates, folded into `DRAFTSMAN.md`, and a place with a hole.** The sixth
+test drawing (`drawings/egg_in_bowl_6/`, seed 23) measured run 5's folds and asked for
+these: a side stroke's reach past its half-width, re-measured at four pixels; a second
+`2H` layer over rows pinned near `0.60` whatever its pressure; *held off* given its
+numbers; a plan's place as the passage's own shape; dark arcs spaced under half their
+width; the lost edge's stump along the whole join; and the arcs of a round form scaled
+once the offset reaches the short radius. The light's loss a treatment, measured on three
+drawings, is now *about five percent*. The measurements are in `CALIBRATION.md`.
+
+- `difference(outer, *holes, name=)`: a place with holes in it, the outer shape less
+  the holes, as one `Polygon` the log carries whole. For a stump or an eraser that must
+  miss what stands in the place; three drawings built it by hand.
+- `scripts/probe_drawing.py` reads the export against a replay with the envelope out,
+  as `easel export --no-sketch` writes it; with the envelope in it read run 6's exact
+  export as 11,789 pixels off.
+
 **Run 5's candidates, folded into `DRAFTSMAN.md`.** The highlight's floor, the darks as a
 sum, a `6B`'s list under `0.15`, offset rather than scaled arcs on a flat shape, the second
 stump, the three-stroke hard edge beside a speckled band, what `subject:` counts, and the

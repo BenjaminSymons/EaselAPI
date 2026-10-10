@@ -1049,6 +1049,84 @@ def union(*shapes, resolution: int = 1024, name: str = "") -> Polygon:
     return Polygon(tuple(points), name=name or "+".join(p.name for p in polys if p.name))
 
 
+def difference(outer, *holes, name: str = "") -> Polygon:
+    """A place with holes in it: ``outer`` less every hole, as one shape.
+
+    A stump or an eraser acts on everything under the place it is handed, and no
+    helper takes a clip; the only hold a drawing has on what is to be kept is the
+    shape of the place itself. A plane stumped round a thing standing on it, a floor
+    stumped round a highlight, a band stumped with the plane it lies on: each is the
+    plane's shape with the thing cut out of it, and this builds that shape::
+
+        s.stump(difference(table, bowl, egg), strength=1.0)   # misses the bowl and the egg
+
+    What comes back is one :class:`Polygon`, so it goes anywhere a place goes and the
+    log carries it whole. Its outline is the outer outline joined to each hole's by a
+    zero-width slit, which the even-odd fill reads as the hole: the mask is exactly
+    the outer mask less the holes'. The slit is laid from the nearest pair of
+    vertices that no edge crosses, so a hole can sit anywhere inside. It is a place to
+    *act inside*: handed to ``contour()`` it would draw the slit, since the outline is
+    walked as given.
+
+    Args:
+        outer: the shape, region, region name or 4-tuple the holes are cut from.
+        *holes: one or more shapes to cut out. A hole must have some of it inside the
+            outer shape; one lying wholly outside is refused, since it cuts nothing.
+        name: shows up in the log. Left off, ``outer-hole`` from the parts' names.
+
+    Returns:
+        A :class:`Polygon` of the outer shape less the holes.
+    """
+    if not holes:
+        raise ValueError("difference() needs at least one hole to cut: difference(outer, hole, ...).")
+    base = polygon(outer)
+    ring = list(base.points)
+    names = [base.name]
+    for item in holes:
+        hole = polygon(item)
+        names.append(hole.name)
+        hx = np.array([p[0] for p in hole.points])
+        hy = np.array([p[1] for p in hole.points])
+        if not base.inside(hx, hy).any():
+            raise ValueError(
+                f"difference() was given a hole with none of its points inside the "
+                f"shape{' ' + base.name if base.name else ''}: it would cut nothing. A "
+                f"hole is a shape standing in the place, cut out of it."
+            )
+        hpts = list(hole.points)
+        if _signed_area(hpts) * _signed_area(ring) > 0:
+            hpts = hpts[::-1]                  # the hole runs the other way round
+        i, j = _bridge(ring, hpts)
+        ring = ring[i:] + ring[:i]
+        hpts = hpts[j:] + hpts[:j]
+        ring = ring + [ring[0], hpts[0]] + hpts[1:] + [hpts[0]]
+    return Polygon(tuple(ring), name=name or "-".join(n for n in names if n))
+
+
+def _bridge(ring, hole) -> tuple[int, int]:
+    """The vertex of ``ring`` and the vertex of ``hole`` to join by a slit: the
+    closest pair whose joining segment crosses no edge of either outline."""
+    edges = [*zip(ring, [*ring[1:], ring[0]], strict=True),
+             *zip(hole, [*hole[1:], hole[0]], strict=True)]
+    pairs = sorted(((i, j) for i in range(len(ring)) for j in range(len(hole))),
+                   key=lambda ij: (ring[ij[0]][0] - hole[ij[1]][0]) ** 2
+                   + (ring[ij[0]][1] - hole[ij[1]][1]) ** 2)
+    for i, j in pairs:
+        a, b = ring[i], hole[j]
+        if not any(_segments_cross(a, b, c, d) for c, d in edges
+                   if a not in (c, d) and b not in (c, d)):
+            return i, j
+    return pairs[0]
+
+
+def _segments_cross(a, b, c, d) -> bool:
+    """Do the open segments ``ab`` and ``cd`` properly cross each other?"""
+    d1, d2 = _cross(c, d, a), _cross(c, d, b)
+    d3, d4 = _cross(a, b, c), _cross(a, b, d)
+    return ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0)) \
+        and d1 != 0 and d2 != 0 and d3 != 0 and d4 != 0
+
+
 def ribbon(places, width: float, end_width: float | None = None,
            smooth: bool = True, name: str = "") -> Polygon:
     """A mass of the given width running along a path: a shape that is not a box.

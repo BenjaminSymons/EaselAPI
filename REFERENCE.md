@@ -293,6 +293,8 @@ ribbon(places, width, end_width=None, smooth=True, name="")   # a mass along a l
 roughen(shape, amp=0.006, step=0.008, seed=0, calm=None, aspect=None, name="")
                                        # an outline walked off its own line
 union(a, b, ..., resolution=1024, name="")     # one silhouette round overlapping shapes
+difference(outer, hole, ..., name="")      # the outer shape less the holes: a place
+                                       # a stump or an eraser acts round what stands in it
 terminator(outline, inside, margin=0.004, step=0.002, least=0.02, aspect=None)
                                        # the runs of one outline inside another: paths
 letter_paths(text, place, cap=0.04, slant=0, seed=None, aspect=None)

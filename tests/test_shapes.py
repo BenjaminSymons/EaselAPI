@@ -28,6 +28,7 @@ from easel.regions import (
     as_region,
     blob,
     cell,
+    difference,
     ellipse,
     hull,
     polygon,
@@ -719,3 +720,49 @@ def test_a_shape_placed_outside_the_canvas_is_told_so():
     with pytest.raises(ValueError, match=r"s\.line\(\)") as exc:
         polygon([(0.2, 0.2), (0.6, 0.6)])
     assert "outside" not in str(exc.value)
+
+
+def test_a_difference_is_the_outer_mask_less_the_holes():
+    """A stump or an eraser acts on everything under its place, and the sixth drawing
+    built the table less the bowl, the band less the rim and the floor less the
+    highlight by hand, as polygons with a slit, three times; a slit three pixels wide
+    left an unstumped line. The place with a hole is now built here, and its mask is
+    exactly the outer mask less the holes', wherever the holes sit."""
+    outer = Region(0.1, 0.1, 0.9, 0.9)
+    near = ellipse((0.4, 0.5), 0.2, 0.15)
+    far = ellipse((0.75, 0.3), 0.06, 0.09)
+    place = difference(outer, near, far, name="table")
+    mask = place.mask(1024, 768)
+    want = polygon(outer).mask(1024, 768) & ~near.mask(1024, 768) & ~far.mask(1024, 768)
+    assert mask.sum() == want.sum() and not (mask != want).any()
+    assert place.name == "table"
+    cover = place.coverage(1024, 768)
+    assert cover[384, 409] == 0.0 and cover[115, 154] == 1.0
+    # A concave outer, with the hole beside the notch: the slit must not cross an edge.
+    notch = polygon([(0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.5, 0.9), (0.5, 0.4),
+                     (0.45, 0.4), (0.45, 0.9), (0.1, 0.9)], name="notched")
+    hole = ellipse((0.3, 0.6), 0.08, 0.1, name="hole")
+    cut = difference(notch, hole)
+    assert cut.name == "notched-hole"
+    assert not (cut.mask(1024, 768) != (notch.mask(1024, 768) & ~hole.mask(1024, 768))).any()
+    with pytest.raises(ValueError, match=r"none of its points inside"):
+        difference(outer, ellipse((0.95, 0.95), 0.02, 0.02))
+    with pytest.raises(ValueError, match=r"at least one hole"):
+        difference(outer)
+
+
+def test_a_stump_over_a_difference_misses_the_hole_and_replays(tmp_path):
+    """The hold the guide asks for: a stump handed the plane less the thing standing
+    on it blends the plane and leaves the thing, and the log carries the place whole."""
+    s = Session(400, 300, medium="graphite", seed=3, out_dir=tmp_path, timelapse=False)
+    s.hatch(Region(0.1, 0.1, 0.9, 0.9), angle=0, grade="2B", pressure=0.8, tip="side")
+    before = np.array(s.canvas.graphite)
+    hole = ellipse((0.5, 0.5), 0.15, 0.12)
+    s.stump(difference(Region(0.1, 0.1, 0.9, 0.9), hole), strength=1.0)
+    after = np.array(s.canvas.graphite)
+    changed = np.abs(after - before) > 1e-6
+    kept = hole.inset(0.03).mask(400, 300)         # clear of the stump's own reach
+    assert not changed[kept].any()
+    assert changed[~hole.mask(400, 300)].sum() > 10_000
+    again = s.replay()
+    assert not (np.abs(np.array(again.canvas.graphite) - after) > 1e-6).any()

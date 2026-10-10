@@ -185,7 +185,9 @@ edge is lost.
 **Build a place to exclude what is to be kept.** No helper takes `clip=`, and a stump
 or an eraser acts on everything under the place it is handed: a lift over a floor took
 the cast shadow lying on it down by `0.29`. The polygon you hand the eraser is the
-drawing's only hold.
+drawing's only hold, and `difference(plane, thing)` builds it: the plane with the
+thing cut out, one place the log carries whole. A sixth drawing built it three times
+by hand with a slit, and a slit three pixels wide left a line the stump missed.
 
 ### 2. Lay the big planes as rows by hand
 
@@ -201,11 +203,16 @@ holes read as a field of white points at full size. `2H` at `1.0` leaves 2% and 
 a near plane want; a pressure list along each row makes the plane lighter toward its
 light. **A run that ends at a thing stops a sixth of the stroke's width short of it**,
 12 px at `0.07`, since a side stroke's value runs that far past its last point; **a run
-that passes beside a thing keeps half the width clear**, 35 px at `0.07`, and `hatch`
-cuts its paths, not its widths. The band beside the thing is laid
-in the thing's own pass, along its silhouette, as one layer where the rows are two, and
-**it stops where a second thing standing in the first breaks the silhouette**: a band
-and an edge stroke each laid across that crown cost two lifts to take back.
+that passes beside a thing keeps half the width and five pixels clear**, 40 px at
+`0.07`, since a side stroke's graphite reaches four pixels past its half-width and the
+hand's drift adds two, and `hatch` cuts its paths, not its widths. The band beside the
+thing is laid in the thing's own pass, along its silhouette, as one layer where the
+rows are two, and **it stops where a second thing standing in the first breaks the
+silhouette**: a band and an edge stroke each laid across that crown cost two lifts to
+take back. **A second `2H` layer over the rows reads `0.59` to `0.61` whatever its
+pressure**, from `0.7` to `1.0`, so a band beside a plane lighter than that covers only
+the pixels the rows do not reach, at the rows' own pressure, and is stumped with the
+plane's own place: stumped on a ring of its own, it drew the ring.
 
 **One stump at full strength closes the rows**; a second evens the mottle a single
 stump leaves over a large place. **A second stump covers exactly what the first did,
@@ -220,9 +227,12 @@ row, and the ends read as steps. **Build the passage as arcs of its own shape**,
 from the light, cut into runs round whatever stands in it. The arcs step inward by a
 stroke's width in both axes, offset from the outline, not scaled: on a round form the two
 nearly match, but on a flat one a scaled ring overlaps four deep along its long ends and
-gaps along its sides. For a hollow thing, the arcs
-run round the inside; for a form, the arcs are cross-contours, and each is shorter than
-the one before so that their ends trace the terminator; exercise 5 lays one.
+gaps along its sides. The offsets stop at the form's short radius: past it an offset
+arc collapses to a dash through the centre, and a round form's inner arcs are scaled.
+Where an arc turns tightest a side stroke piles up, so the list dips there. For a
+hollow thing, the arcs run round the inside; for a form, the arcs are cross-contours,
+and each is shorter than the one before so that their ends trace the terminator;
+exercise 5 lays one.
 
 A silhouette made of two shapes is one closed run of points round both, or it leaves a
 notch of paper where they meet.
@@ -251,6 +261,9 @@ named at registration: that pair is a lost edge, meant or not. **The `plan:` lin
 carries every place's reading**, and `s.compare(s.plan())` draws the heat map. Name
 every place: `span()` names one by its two cells, `Region(..., name=)` and
 `polygon(..., name=)` take your own, and a place handed over bare prints as `place 1`.
+**A plan's place is the passage's own shape, not the mass it sits in**: a lit floor
+planned as the whole of a hollow read `0.89` while the sliver of toned floor in it
+read `0.70`, because a median never reads a sliver.
 
 **The stump moves the number**, by what the holes let it spread: the median moves
 `0.03` lighter under a stump at full strength on rows leant on, `0.06` on rows laid at
@@ -266,7 +279,10 @@ The grade for a half-tone is a harder one leant on, not a softer one held off: `
 a `2B` at `0.9` the core. One stump along the arcs closes the tooth between them; a
 stump dragged along a path is biased along it, and over a shape it is worked every way.
 **A tone between `0.70` and `0.85` is `2H` held off and stumped at full strength
-twice**; it is speckle until the second stump.
+twice**; it is speckle until the second stump. Held off is a number: rows at
+`width=0.03`, a stroke's width apart, with lists peaking `0.85`, read `0.82` after the
+two stumps, peaking `0.7` they read `0.86`, and peaking `0.55` they read `0.90`, which
+is paper; rows overlapping at 24 px want the peak at `0.7` for the same `0.82`.
 
 ### 6. Edges: lost and found
 
@@ -279,7 +295,9 @@ is a dark ring, not an edge. **Where the band beside the edge is speckled, the h
 stroke 8 px out, a stump along it, and the 13 px edge last; the edge alone leaves the
 band's 10 to 15 px fringe of paper. **A lost edge is two tones of one value butting on the line and one stump
 dragged across the join**, and nothing else: two values under `0.10` apart are already
-one mass where they meet. A soft edge is a stump dragged along the line once.
+one mass where they meet. The stump crosses the whole join, not one point of it: a
+drag loses 50 px, and two tones laid as arcs that overlap on the line are a dark line
+wherever no drag crossed. A soft edge is a stump dragged along the line once.
 
 ### 7. Darks last, unstumped
 
@@ -293,8 +311,10 @@ reaches the value, and a dark laid over a dark adds none of it. **The area is a 
 list that falls to its ends wants the softer grade**: seven `4B` arcs at bells to half
 read `0.78` of the way, two `6B` at a bell to `0.9` read `0.85`. **A `6B`'s list must fall
 under `0.15` at its ends**: at `0.4` the ends read as blocks, and at `0.15` they fade (the
-table's `6B` at `0.25` reads `0.31`). Lay
-the darks after every stump near them, and leave them.
+table's `6B` at `0.25` reads `0.31`). Dark arcs laid side by side sit under half
+their width apart, 14 px at 31 px wide, or they read as stripes with a seam between
+each; and each outward arc is shorter than the one inside it, or their ends stack into
+a staircase. Lay the darks after every stump near them, and leave them.
 
 ### 8. Highlights are paper never touched
 
@@ -307,9 +327,10 @@ A highlight lifted is a value: an eraser leaves a ghost, and a `6B` passage lift
 reads `0.74` where the paper reads `0.96`. `plastic` takes most of a passage in one pass
 with a clean edge; `kneaded` takes a share with a soft one; both are charged, and both
 act on everything under the place. **Every stump or edge stroke beside the light takes
-two to five percent of its paper**: cut a stump's path round the light by half its
-width, as a row is, and count the treatments before laying them; the `lightest:` line
-says what each took. Before you commit to a highlight, `s.look(tooth=True)` shows the
+about five percent of its paper**, two in one drawing and five to seven in two more,
+and the three-stroke hard edge along a light takes eighteen: cut a stump's path round
+the light by half its width, as a row is, and count the treatments before laying them;
+the `lightest:` line says what each took. Before you commit to a highlight, `s.look(tooth=True)` shows the
 bare paper: blue where no graphite has landed, and amber where a light `2H` would break
 up on the tooth rather than lay flat.
 

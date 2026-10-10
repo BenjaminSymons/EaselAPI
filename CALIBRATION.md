@@ -496,6 +496,81 @@ against it; the label says which were measured and which were only seen.
   stops a sixth of the width short of it, and a run passing beside keeps half the width
   clear.
 
+And what the sixth drawing asked for, folded into `DRAFTSMAN.md` (run 6's `NOTES.md`,
+*What this run says of the guide*). Each is a hypothesis until a seventh drawing is made
+against it; the label says which were measured and which were only seen. The
+measured ones were measured again on fresh canvases (`1024x768`, `cartridge`, seed 5),
+not taken from the draftsman's log.
+
+- **A side stroke's reach across its width.** Measured: a `2H` at `0.85` or `1.0` and an
+  `HB` at `0.9`, `width=0.07` (36 px to the half-width), lay graphite to a median **38 px**
+  and at most **40 px** from the centreline, so four pixels past the half-width; the
+  draftsman's *about 10 px* was read off a rehearsal of a band whose nominal edge sat
+  on the light's line, and the committed band, 26 px out, took 5 points of the rim's
+  paper, not 30. The hand's drift on the side is `0.03` of the width, two pixels more.
+  The guide's clearance beside a thing is now half the width and five pixels.
+- **A second `2H` layer over the rows.** Measured: over a plane of `2H` rows at `[0.74,
+  1.0]` stumped twice, reading `0.639`, one `2H` side stroke at `width=0.07` stumped once
+  reads **`0.612` at `0.7`, `0.600` at `0.85` and `0.592` at `1.0`**: pinned within two
+  hundredths whatever the pressure, since the second layer saturates toward the grade's
+  ceiling with what the rows already laid. On bare paper the same stroke reads `0.800`,
+  `0.729` and `0.690`, so the pressure still counts there. The draftsman's `0.600` at
+  both pressures holds, and its reading of the cause, the grade's floor, is right for a
+  layer over a layer and wrong for a stroke on paper.
+- **Held off, as a number.** Measured: `2H` rows at `width=0.03` (31 px), lists
+  `[0.2, peak, peak, 0.2]`, two stumps at full strength. A stroke's width apart (36 px):
+  **`0.903` at a peak of `0.55`, `0.863` at `0.7`, `0.819` at `0.85`, `0.781` at `1.0`**;
+  24 px apart, overlapping: `0.875`, `0.817`, `0.753`, `0.706`. The guide's floor of
+  `0.82` to `0.85` is a peak of `0.85` at a width's spacing or `0.7` overlapping, which
+  is what run 5's rings were; run 6's four arcs at a `0.55` bell read `0.94`, as the
+  table predicts.
+- **A list that falls to its ends, plus a stump.** Measured, and the draftsman's cause
+  did not hold: one `HB` side stroke at `width=0.05` reads `0.510` at a flat `0.95` and
+  `0.518` at `[0.1, 0.95, 0.95, 0.1]` over its middle half, `0.546` and `0.557` after one
+  stump; `2B` at `0.85` reads `0.357` flat, `0.369` as a bell, `0.401` and `0.412`
+  stumped. The bell costs nothing over its middle; the gap to the grade table (`HB` at
+  `p=1` reads `0.44`) is that the table's pass is strokes crossing one another over a
+  patch and this is one stroke, which reads about seven hundredths lighter, and the
+  stump takes four more. Not folded: the guide's *a list that falls to its ends reads
+  about a grade lighter than its peak* is read over the whole stroke, ends included,
+  and stands.
+- **The light's paper, by pass.** Measured off the log, `rim_light` paper never touched:
+  **97%** after the table, **92%** after the bowl's band, **59%** after the egg, the
+  interior shadow and the bowl's shadow, **41%** after the three edge strokes and their
+  stump, and 41% at the end. The edge pass's 18 points reproduce the draftsman's 19;
+  the 33 the three middle passes took it did not name. The guide's *two to five
+  percent* a treatment, measured on run 4, was 7 a stump on run 5 and about 5 a stroke
+  here, and the guide now says about five.
+- **A plan's place is the passage's shape.** Measured by the closing check: `floor_lit`,
+  drawn as the whole left interior, read `0.89` against `0.73` planned while the sliver
+  of toned floor in it read `0.70` by the draftsman's own probe of the view.
+- **A place with a hole.** Measured by building it: the draftsman cut the bowl and the
+  egg out of the table, the rim out of the band and the highlight out of the floor as
+  polygons with a slit, three times; a slit 3 px wide left an unstumped line, and a
+  zero-width one did not, since the mask is an even-odd fill. `difference(outer,
+  *holes)` now builds that polygon, with the slit from the closest pair of vertices no
+  edge crosses, and its mask is exactly the outer mask less the holes' (`tests/
+  test_shapes.py`).
+- **The band stumped on its own ring.** Seen: the ring stump drew a visible boundary at
+  92 px out; a third pass of the table's own polygon drew none. Run 5's second-stump
+  rule from the other side.
+- **Offset arcs on a round form.** Seen: offsets of 20 px in both axes past the egg's
+  86 px half-height collapsed into a dash and a blob through its centre
+  (`out/probe_egg_rehearse_034.png`); scaled arcs did not.
+- **A side stroke at a tight turn.** Seen: an arc round the interior's left end piled up
+  into a blob at the turn until its list dipped there.
+- **Dark arcs side by side.** Seen: `6B` arcs 26 px wide laid 22 px apart read as three
+  stripes with seams (`out/probe_darks_rehearse.png`); 31 px wide at 14 px, one mass,
+  with a staircase at the tip where every arc began at the same angle.
+- **The lost edge's stump.** Seen: the egg's outline arc and the shadow's first hugging
+  arc overlapped into a dark line along the join; one stump across it lost 50 px, four
+  lost the line.
+- **`look(grid=True)` from Python draws no grid.** Did not reproduce: on a fresh graphite
+  session and through `easel run` on a captured one, `s.look(grid=True)` writes a look
+  with the grid over it (25,567 coloured pixels at 1024x768; none without). Not folded.
+- **The light wedge between two families of arcs** round a hollow and round what stands
+  in it, filled twice to `0.51` against `0.46`. Seen once; held as a candidate.
+
 What else the log measured, quoted in `DRAFTSMAN.md`:
 
 - **What a plane costs.** `tone(cell, 0.36, "2B")` lays 10 lines; `hatch(cell,
