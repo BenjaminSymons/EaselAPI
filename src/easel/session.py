@@ -2683,8 +2683,6 @@ class Session:
         direction=None,
         width: float = 0.03,
         note: str = "",
-        *,
-        _screen: float | None = None,
     ) -> StrokeRecord:
         """Blend the graphite: a stump dragged along a path, or worked over a place.
 
@@ -2707,19 +2705,27 @@ class Session:
                 too. Left off, a path's own direction, or every way over a shape.
             width: a path's footprint, as a fraction of the canvas long side.
             note: recorded in the log.
-            _screen: the replay's, for a record from before ``direction`` was taken
-                in the ``0..1`` space: the screen angle it holds, passed straight
-                through, since no arithmetic inverts :meth:`_screen_degrees` to the
-                bit and a kernel a hair off its angle moves other pixels.
+        """
+        # The kernel works in pixels, so the angle it is given is the screen's: what
+        # the painter gave is kept beside it in the record, in the space it was given.
+        given = None if direction is None else _angle_of(direction)
+        screen = None if given is None else self._screen_degrees(given)
+        return self._stump(place, strength, given, screen, width, note)
+
+    def _stump(self, place, strength, given, screen, width: float, note: str,
+               legacy: bool = False) -> StrokeRecord:
+        """What :meth:`stump` and the replay share, the angles already settled.
+
+        ``screen`` is the angle the kernel runs at and ``given`` the one the painter
+        gave. A replay of a record from before ``direction`` was taken in the
+        ``0..1`` space hands over the screen angle the record holds, ``legacy`` set,
+        and it is passed straight through: no arithmetic inverts
+        :meth:`_screen_degrees` to the bit, and a kernel a hair off its angle moves
+        other pixels. The record it lays stays a record without ``given``.
         """
         s = float(np.clip(strength, 0.0, 1.0))
         outline = _outline_of(place, "stump")
         canvas = self.canvas
-        # The kernel works in pixels, so the angle it is given is the screen's: what
-        # the painter gave is kept beside it in the record, in the space it was given.
-        given = None if direction is None else _angle_of(direction)
-        screen = (float(_screen) if _screen is not None
-                  else None if given is None else self._screen_degrees(given))
         if outline is None:
             pts = np.atleast_2d(np.asarray(place, dtype=np.float32))
             if pts.ndim != 2 or pts.shape[1] != 2 or not np.isfinite(pts).all():
@@ -2756,7 +2762,7 @@ class Session:
                         # direction was taken in the 0..1 space, replays by the
                         # screen angle it holds, and stays a record without it.
                         "direction": screen,
-                        **({} if _screen is not None else {"given": given}),
+                        **({} if legacy else {"given": given}),
                         "width": float(width),
                         **(_place_params(held) if held is not None else {}),
                         "rng": self._stream_state(),
@@ -6745,15 +6751,23 @@ class Session:
                 )
             elif record.kind == "stump":
                 place = _place_from_params(record.params)
-                legacy = "given" not in record.params
-                made = fresh.stump(
-                    record.points if place is None else place,
-                    strength=float(record.params.get("strength", 0.5)),
-                    direction=None if legacy else record.params.get("given"),
-                    width=float(record.params.get("width", 0.03)),
-                    note=record.note,
-                    _screen=record.params.get("direction") if legacy else None,
-                )
+                if "given" in record.params:
+                    made = fresh.stump(
+                        record.points if place is None else place,
+                        strength=float(record.params.get("strength", 0.5)),
+                        direction=record.params.get("given"),
+                        width=float(record.params.get("width", 0.03)),
+                        note=record.note,
+                    )
+                else:
+                    screen = record.params.get("direction")
+                    made = fresh._stump(
+                        record.points if place is None else place,
+                        float(record.params.get("strength", 0.5)), None,
+                        None if screen is None else float(screen),
+                        float(record.params.get("width", 0.03)), record.note,
+                        legacy=True,
+                    )
             elif record.kind == "lift":
                 made = fresh._lift(
                     _place_from_params(record.params),
